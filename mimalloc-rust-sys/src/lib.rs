@@ -35,6 +35,12 @@
 //!   on its own error path without that handling.
 //! - Unwinding out of an `extern "C"` callback aborts the process, so a panic in one is
 //!   fatal.
+//! - `mi_option_set` and its variants write the option with a plain store, while allocation
+//!   on other threads reads options without synchronization. Call them only while no other
+//!   thread can allocate, such as in `main` before spawning threads; serializing the setters is
+//!   not enough. The `MIMALLOC_*` environment variables are read when mimalloc initializes
+//!   at process start, so they must be set before the process starts, not changed from
+//!   within it.
 //! - The `*_stats_get` functions return `false` unless the `size` and `version` fields of the
 //!   destination already match, which the unbound `mi_stats_init` would arrange: zero a
 //!   `mi_stats_t`, then set `size` to its size and `version` to [`MI_STAT_VERSION`].
