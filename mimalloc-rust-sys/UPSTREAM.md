@@ -26,11 +26,17 @@ Only `include/` and `src/static.c` (which `#include`s every other source file) t
 | `-fvisibility=hidden` | always | CMake for Clang/GNU. In a static build `mi_decl_export` is empty, so this hides the `mi_*` API from dynamic export too; static linking still resolves it |
 | `-mno-outline` | Clang | CMake for Clang |
 | `-march=armv8.3-a`, `-Xclang -fno-split-cold-code` | `aarch64-apple-darwin` | CMake `MI_OPT_ARCH` default on Apple arm64; AppleClang on arm64 |
+| `MI_MALLOC_OVERRIDE`, `-fno-builtin-malloc` | `override` feature | `MI_OVERRIDE=ON` |
+| `MI_OSX_ZONE=1`, `MI_OSX_INTERPOSE=1` | `override` feature on macOS | `MI_OVERRIDE=ON` defaults. Interpose only takes effect in a shared library (`MI_SHARED_LIB_EXPORT`); in this static build the `constructor(101)` in `src/prim/osx/alloc-override-zone.c` installs the mimalloc zone. `static.c` includes that file under `MI_OSX_ZONE` |
 
 ### Intentional differences
 
 - **Linux aarch64 CPU baseline.** Upstream's `MI_OPT_ARCH` default adds `-march=armv8.1-a` on arm64 Linux for LSE atomics. That raises the C code above the ARMv8.0 baseline of Rust's `aarch64-unknown-linux-{gnu,musl}` targets and traps (SIGILL) on cores such as Cortex-A53/A72. We keep the compiler's ARMv8.0 default and pass `-moutline-atomics`, which selects LSE at runtime when available.
   - Verified: no inline LSE instructions in the archive (all atomics call `__aarch64_*` helpers), and the test suite passes under `qemu-aarch64 -cpu cortex-a72`, where a `-march=armv8.1-a` control program traps.
+
+- **Static override linking.** Upstream recommends linking `mimalloc.o` as the first object. Cargo cannot place an object from a dependency on the final link line, so the archive is linked with `+whole-archive` instead. This guarantees the object is included but not where.
+  - Without it, a release program that calls no `mi_*` function kept libc's `malloc` on the GNU ld targets (aarch64 gnu, both musl); x86_64 gnu (rust-lld) and macOS (ld64) happened to work.
+  - On musl the link only succeeds when the archive comes before `libc.a`. rustc does this for executables, integration tests and doctests; the `mimalloc-rust` lib test binary is the one observed exception, so it is disabled (it has no unit tests). Details in [`docs/known-issues.md`](../docs/known-issues.md).
 
 ## Bindings
 
