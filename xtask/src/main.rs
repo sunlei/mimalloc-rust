@@ -71,6 +71,12 @@ fn check_symbols() -> ExitCode {
         .filter_map(|line| line.trim_start().strip_prefix("pub fn "))
         .filter_map(|rest| rest.split('(').next())
         .collect();
+    // Guards against a bindgen output format this scan no longer recognizes, which would
+    // otherwise pass with nothing checked.
+    assert!(
+        !declared.is_empty(),
+        "no `pub fn` declarations found in {BINDINGS}"
+    );
 
     let library = build_static_library(&root);
     let defined = defined_symbols(&library);
@@ -176,7 +182,11 @@ fn generate_bindings(include_dir: &Path) -> String {
         .prepend_enum_name(false)
         // bindgen defaults to an older target that cannot emit edition 2024 code;
         // match the workspace MSRV instead.
-        .rust_target(bindgen::RustTarget::stable(99, 0).expect("valid Rust version"))
+        .rust_target(
+            env!("CARGO_PKG_RUST_VERSION")
+                .parse()
+                .expect("valid workspace rust-version"),
+        )
         .rust_edition(bindgen::RustEdition::Edition2024)
         .merge_extern_blocks(true)
         // Independent of whichever rustfmt happens to be installed, so output is reproducible.

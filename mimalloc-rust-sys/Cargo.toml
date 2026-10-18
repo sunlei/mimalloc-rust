@@ -21,7 +21,7 @@ local_dynamic_tls = []
 override = []
 
 [build-dependencies]
-cc = "1.8"
+cc.workspace = true
 
 [lints]
 workspace = true

@@ -18,11 +18,13 @@ fn main() {
     let extension = if target_os == "macos" { "dylib" } else { "so" };
     let library = out_dir.join(format!("libdep.{extension}"));
 
+    // `get_compiler` already adds `-fPIC` on these targets. `-shared` is passed by hand:
+    // cc deprecates `shared_flag` because it only builds static libraries.
     let status = cc::Build::new()
+        .include(include_dir)
         .get_compiler()
         .to_command()
-        .args(["-shared", "-fPIC"])
-        .arg(format!("-I{include_dir}"))
+        .arg("-shared")
         .arg("src/dep.c")
         .arg("-o")
         .arg(&library)

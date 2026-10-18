@@ -57,7 +57,7 @@ Not bound:
 - `mi_collect_reduce`, `mi_stats_merge`: declared in `mimalloc.h` but not defined anywhere in v3.5.3.
 - `mi_malloc_size`, `mi_malloc_usable_size`: only defined when `MI_MALLOC_OVERRIDE` is set.
 - `static inline` helpers: `mi_wsize_from_size`, `mi_*_csize`, `mi_free_csize*`, `mi_stats_header_init`, `mi_stats_init`.
-  - Before calling `mi_stats_get`, do what `mi_stats_init` does: zero the whole `mi_stats_t`, then set `size = size_of::<mi_stats_t>()` and `version = MI_STAT_VERSION`.
+  - The crate docs in `src/lib.rs` describe how to replace `mi_stats_init` before calling the `*_stats_get` functions.
 
 ## Upgrading
 

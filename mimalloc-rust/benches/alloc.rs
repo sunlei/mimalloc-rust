@@ -16,8 +16,8 @@ const BATCH: usize = 64;
 // point falls back to over-allocation (see docs/known-issues.md); the other sizes have
 // power-of-two size classes.
 const SIZES: [usize; 9] = [8, 24, 48, 64, 224, 256, 640, 1024, 4096];
-// `mi_malloc` already guarantees this alignment, so it is the case where `MiMalloc` could
-// skip the aligned entry point.
+// `mi_malloc` already guarantees this alignment, so `MiMalloc` takes its `mi_malloc` path
+// unless built with `debug`.
 const ALIGN: usize = 8;
 
 fn alloc_free_batch(
@@ -62,19 +62,13 @@ fn bench_alloc_free(c: &mut Criterion) {
         assert_valid_block(layout, malloc_aligned, free);
         assert_valid_block(layout, global_alloc, global_dealloc);
 
-        group.bench_with_input(
-            BenchmarkId::new("mi_malloc", size),
-            &layout,
-            |b, &layout| {
-                b.iter(|| alloc_free_batch(layout, malloc, free));
-            },
-        );
-        group.bench_with_input(
-            BenchmarkId::new("mi_malloc_aligned", size),
-            &layout,
-            |b, &layout| b.iter(|| alloc_free_batch(layout, malloc_aligned, free)),
-        );
-        group.bench_with_input(BenchmarkId::new("MiMalloc", size), &layout, |b, &layout| {
+        group.bench_function(BenchmarkId::new("mi_malloc", size), |b| {
+            b.iter(|| alloc_free_batch(layout, malloc, free));
+        });
+        group.bench_function(BenchmarkId::new("mi_malloc_aligned", size), |b| {
+            b.iter(|| alloc_free_batch(layout, malloc_aligned, free));
+        });
+        group.bench_function(BenchmarkId::new("MiMalloc", size), |b| {
             b.iter(|| alloc_free_batch(layout, global_alloc, global_dealloc));
         });
     }
