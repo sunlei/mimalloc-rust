@@ -36,10 +36,17 @@ fn main() {
 
     // Without explicit values `MI_DEBUG` defaults to 2 whenever `NDEBUG` is undefined
     // (types.h), and cc never defines `NDEBUG`.
+    // `types.h` would also derive `MI_GUARDED` from these; setting it here keeps the C
+    // library and `cfg(mi_guarded)` (the sys crate's `MI_GUARDED`) on one decision.
+    println!("cargo::rustc-check-cfg=cfg(mi_guarded)");
     if feature("DEBUG") {
-        build.define("MI_DEBUG", "2");
+        build.define("MI_DEBUG", "2").define("MI_GUARDED", "1");
+        println!("cargo::rustc-cfg=mi_guarded");
     } else {
-        build.define("MI_DEBUG", "0").define("NDEBUG", "1");
+        build
+            .define("MI_DEBUG", "0")
+            .define("NDEBUG", "1")
+            .define("MI_GUARDED", "0");
     }
     if feature("SECURE") {
         build.define("MI_SECURE", "4");

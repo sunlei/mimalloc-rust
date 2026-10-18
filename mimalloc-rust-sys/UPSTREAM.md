@@ -18,6 +18,7 @@ Only `include/` and `src/static.c` (which `#include`s every other source file) t
 |---|---|---|
 | `MI_DEBUG=0`, `NDEBUG=1` | default | CMake release build; `types.h` would otherwise default `MI_DEBUG` to 2 because cc never defines `NDEBUG` |
 | `MI_DEBUG=2` | `debug` feature | CMake Debug build (`MI_DEBUG=INTERNAL`) |
+| `MI_GUARDED=0`, or `MI_GUARDED=1` with the `debug` feature | always | The value `types.h` derives from `MI_DEBUG` and `NDEBUG`, set explicitly so that `build.rs` also reports it to Rust as `cfg(mi_guarded)`. A CMake Debug build uses `MI_GUARDED=2` (fine-grained sample rates) instead |
 | `MI_SECURE=4` | `secure` feature | `MI_SECURE=ON` |
 | `MI_LIBC_MUSL=1` | musl targets | `MI_LIBC_MUSL=ON`, which upstream expects the builder to set; it changes thread-pointer selection in `prim-tls.h` |
 | `MI_DEFAULT_ALLOW_THP=0` | `no_thp` feature on Linux/Android | What `MI_NO_THP=ON` turns into. Defining the C macro `MI_NO_THP` instead would only skip `madvise` and keep the runtime option enabled |

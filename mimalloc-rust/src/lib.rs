@@ -23,9 +23,6 @@ pub use stats::{StatsJson, stats_json};
 #[derive(Clone, Copy, Debug, Default)]
 pub struct MiMalloc;
 
-/// mimalloc's `MI_MAX_ALIGN_SIZE` (`types.h`), which the build script does not override.
-const MI_MAX_ALIGN_SIZE: usize = 16;
-
 /// Whether `mi_malloc(size)` already returns blocks aligned to `align`.
 ///
 /// Size classes above 8 bytes are multiples of 16 bytes and pages start their blocks at a
@@ -36,7 +33,7 @@ const MI_MAX_ALIGN_SIZE: usize = 16;
 /// (see `docs/known-issues.md`).
 #[inline]
 const fn mi_malloc_aligns(size: usize, align: usize) -> bool {
-    !ffi::MI_GUARDED && align <= MI_MAX_ALIGN_SIZE && align <= size
+    align <= ffi::MI_MALLOC_ALIGN && align <= size
 }
 
 // SAFETY: `mi_malloc`, `mi_zalloc` and `mi_realloc` are only used when `mi_malloc_aligns`

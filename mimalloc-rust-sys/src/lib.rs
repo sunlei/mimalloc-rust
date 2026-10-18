@@ -54,7 +54,13 @@ extern crate std;
 /// With guarded sampling and the `guarded_precise` option enabled at run time, `mi_malloc`
 /// can return blocks that are not 16-byte aligned. Features are unified across the dependency
 /// graph, so dependents should read this instead of their own `debug` feature.
-pub const MI_GUARDED: bool = cfg!(feature = "debug");
+pub const MI_GUARDED: bool = cfg!(mi_guarded);
+
+/// The alignment `mi_malloc` gives every block of at least this many bytes.
+///
+/// This is `MI_MAX_ALIGN_SIZE` from `types.h` (16), which the build script leaves at its
+/// default, or 1 with [`MI_GUARDED`], whose sampled blocks need not be aligned at all.
+pub const MI_MALLOC_ALIGN: usize = if MI_GUARDED { 1 } else { 16 };
 
 /// C `wchar_t`, used by `mi_wcsdup` and `mi_wdupenv_s`.
 ///
