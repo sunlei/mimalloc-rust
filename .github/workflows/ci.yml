@@ -39,9 +39,11 @@ jobs:
       - name: Test features
         shell: bash
         run: |
-          for features in secure debug no_thp local_dynamic_tls secure,debug; do
+          for features in secure debug no_thp local_dynamic_tls secure,debug override override,secure override,local_dynamic_tls; do
             cargo test --locked --features "mimalloc-rust/${features//,/,mimalloc-rust/}"
           done
+      # The override probe only discriminates in release; see tests/override_probe.rs.
+      - run: cargo test --locked --release --features mimalloc-rust/override
       # A crt-static musl binary cannot dlopen libclang, so build the xtask dynamically there.
       - name: Bindings match this target
         env:
