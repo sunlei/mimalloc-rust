@@ -17,6 +17,8 @@ debug = []
 no_thp = []
 # Use the local-dynamic TLS model (needed when the final artifact is dlopen'ed).
 local_dynamic_tls = []
+# Replace the C allocation functions (malloc, free, ...) of the final executable.
+override = []
 
 [build-dependencies]
 cc = "1.2"

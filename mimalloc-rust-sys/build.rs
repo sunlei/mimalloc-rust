@@ -49,6 +49,28 @@ fn main() {
         // macro only skips `madvise` and leaves the runtime option enabled.
         build.define("MI_DEFAULT_ALLOW_THP", "0");
     }
+    if feature("OVERRIDE") {
+        // Replacing malloc can break a process silently, so only targets where the
+        // override tests pass are accepted.
+        let verified = matches!(
+            (target_os.as_str(), target_env.as_str(), target_arch.as_str()),
+            ("macos", _, "aarch64") | ("linux", "gnu" | "musl", "x86_64" | "aarch64")
+        );
+        if !verified {
+            panic!("the `override` feature is not supported on {}", cfg("TARGET"));
+        }
+        build.define("MI_MALLOC_OVERRIDE", None).flag("-fno-builtin-malloc");
+        if target_os == "macos" {
+            // Interpose only takes effect in a shared library; the zone constructor does
+            // the work in a static build. Both are kept to match upstream's defines.
+            build.define("MI_OSX_ZONE", "1").define("MI_OSX_INTERPOSE", "1");
+        }
+        // A single-pass linker (GNU ld) reaches this archive before std references
+        // `malloc`, so a program that calls no `mi_*` function would silently keep libc's
+        // allocator. Link order stays rustc's choice: on musl, a `libc.a` placed before
+        // this archive fails the link with duplicate `malloc` definitions.
+        build.link_lib_modifier("+whole-archive");
+    }
 
     // Upstream uses local-dynamic for static musl builds (issue #644).
     let tls_model = if feature("LOCAL_DYNAMIC_TLS") || is_musl {

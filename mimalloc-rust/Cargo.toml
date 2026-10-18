@@ -12,6 +12,7 @@ secure = ["mimalloc-rust-sys/secure"]
 debug = ["mimalloc-rust-sys/debug"]
 no_thp = ["mimalloc-rust-sys/no_thp"]
 local_dynamic_tls = ["mimalloc-rust-sys/local_dynamic_tls"]
+override = ["mimalloc-rust-sys/override"]
 
 [dependencies]
 mimalloc-rust-sys = { path = "../mimalloc-rust-sys" }
