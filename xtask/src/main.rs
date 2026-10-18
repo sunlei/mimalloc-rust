@@ -7,6 +7,8 @@
 //!
 //! Run the checks natively on every supported target: the headers include libc headers
 //! (`assert.h`, `string.h`), so each target's own sysroot must be visible to libclang.
+//! On musl, build with `RUSTFLAGS="-C target-feature=-crt-static"`: libclang is loaded with
+//! `dlopen`, which a statically linked musl binary cannot do.
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};

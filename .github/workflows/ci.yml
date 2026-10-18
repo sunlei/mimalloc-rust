@@ -42,9 +42,14 @@ jobs:
           for features in secure debug no_thp local_dynamic_tls secure,debug; do
             cargo test --locked --features "mimalloc-rust/${features//,/,mimalloc-rust/}"
           done
+      # A crt-static musl binary cannot dlopen libclang, so build the xtask dynamically there.
       - name: Bindings match this target
+        env:
+          RUSTFLAGS: ${{ matrix.container && '-C target-feature=-crt-static' || '' }}
         run: cargo run --locked -p xtask -- bindgen --check
       - name: Bound functions are linkable
+        env:
+          RUSTFLAGS: ${{ matrix.container && '-C target-feature=-crt-static' || '' }}
         run: cargo run --locked -p xtask -- check-symbols
 
   # Rust's Linux aarch64 targets are ARMv8.0; prove the C code runs without LSE atomics.
