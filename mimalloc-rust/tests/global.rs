@@ -30,12 +30,20 @@ fn version_matches_vendored_sources() {
 #[test]
 fn alloc_honors_size_and_alignment() {
     // Covers size < align, the default alignment, page alignment and a 1 MiB alignment.
-    for layout in [layout(1, 16), layout(24, 8), layout(8, 4096), layout(1 << 20, 1 << 20)] {
+    for layout in [
+        layout(1, 16),
+        layout(24, 8),
+        layout(8, 4096),
+        layout(1 << 20, 1 << 20),
+    ] {
         unsafe {
             let block = MiMalloc.alloc(layout);
             assert!(!block.is_null(), "{layout:?}");
             assert_eq!(block.addr() % layout.align(), 0, "{layout:?}");
-            assert!(mimalloc_rust::usable_size(block) >= layout.size(), "{layout:?}");
+            assert!(
+                mimalloc_rust::usable_size(block) >= layout.size(),
+                "{layout:?}"
+            );
             block.write_bytes(0xA5, layout.size());
             MiMalloc.dealloc(block, layout);
         }
@@ -54,7 +62,11 @@ fn alloc_zeroed_clears_the_requested_range() {
             let block = MiMalloc.alloc_zeroed(layout);
             assert!(!block.is_null(), "{layout:?}");
             assert_eq!(block.addr() % layout.align(), 0, "{layout:?}");
-            assert!(slice::from_raw_parts(block, layout.size()).iter().all(|&b| b == 0));
+            assert!(
+                slice::from_raw_parts(block, layout.size())
+                    .iter()
+                    .all(|&b| b == 0)
+            );
             MiMalloc.dealloc(block, layout);
         }
     }
@@ -102,7 +114,9 @@ fn assert_filled(blocks: &[Box<[u8]>]) {
 
 #[test]
 fn blocks_outlive_the_thread_that_allocated_them() {
-    let blocks = thread::spawn(filled_blocks).join().expect("allocating thread");
+    let blocks = thread::spawn(filled_blocks)
+        .join()
+        .expect("allocating thread");
     // The allocating thread has exited; its blocks are now freed from this thread.
     assert_filled(&blocks);
     drop(blocks);

@@ -80,7 +80,11 @@ fn check_symbols() -> ExitCode {
         .filter(|name| !defined.contains(*name))
         .collect();
     if missing.is_empty() {
-        println!("all {} bound functions are defined in {}", declared.len(), library.display());
+        println!(
+            "all {} bound functions are defined in {}",
+            declared.len(),
+            library.display()
+        );
         return ExitCode::SUCCESS;
     }
     eprintln!("functions bound but not defined in {}:", library.display());
@@ -95,7 +99,12 @@ fn build_static_library(root: &Path) -> PathBuf {
     let cargo = env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
     let output = Command::new(cargo)
         .current_dir(root)
-        .args(["build", "--package", "mimalloc-rust-sys", "--message-format=json"])
+        .args([
+            "build",
+            "--package",
+            "mimalloc-rust-sys",
+            "--message-format=json",
+        ])
         .stderr(Stdio::inherit())
         .output()
         .expect("running cargo build");
@@ -121,9 +130,17 @@ fn defined_symbols(library: &Path) -> BTreeSet<String> {
         .arg(library)
         .output()
         .expect("running nm");
-    assert!(output.status.success(), "nm failed on {}", library.display());
+    assert!(
+        output.status.success(),
+        "nm failed on {}",
+        library.display()
+    );
     // Mach-O prefixes C symbols with an underscore.
-    let prefix = if cfg!(target_vendor = "apple") { "_" } else { "" };
+    let prefix = if cfg!(target_vendor = "apple") {
+        "_"
+    } else {
+        ""
+    };
     String::from_utf8_lossy(&output.stdout)
         .lines()
         .filter_map(|line| {
@@ -138,7 +155,10 @@ fn defined_symbols(library: &Path) -> BTreeSet<String> {
 
 fn generate_bindings(include_dir: &Path) -> String {
     bindgen::Builder::default()
-        .header_contents("wrapper.h", "#include <mimalloc.h>\n#include <mimalloc-stats.h>\n")
+        .header_contents(
+            "wrapper.h",
+            "#include <mimalloc.h>\n#include <mimalloc-stats.h>\n",
+        )
         .clang_arg(format!("-I{}", include_dir.display()))
         .allowlist_function("mi_.*")
         .allowlist_type("mi_.*")

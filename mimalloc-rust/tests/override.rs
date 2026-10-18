@@ -55,7 +55,10 @@ fn allocations_inside_libc_come_from_mimalloc() {
 
 #[test]
 fn system_allocator_uses_mimalloc() {
-    for layout in [Layout::from_size_align(64, 8), Layout::from_size_align(64, 4096)] {
+    for layout in [
+        Layout::from_size_align(64, 8),
+        Layout::from_size_align(64, 4096),
+    ] {
         let layout = layout.unwrap();
         unsafe {
             let block = System.alloc(layout);
