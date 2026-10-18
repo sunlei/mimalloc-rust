@@ -21,4 +21,4 @@ local_dynamic_tls = []
 override = []
 
 [build-dependencies]
-cc = "1.2"
+cc = "1.8"
