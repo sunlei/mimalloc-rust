@@ -1,0 +1,22 @@
+[package]
+name = "mimalloc-rust-sys"
+description = "Raw FFI bindings to a vendored, statically linked mimalloc v3"
+links = "mimalloc"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+repository.workspace = true
+
+[features]
+# Upstream secure mode (MI_SECURE=4).
+secure = []
+# mimalloc internal invariant checking (MI_DEBUG=2), independent of the Cargo profile.
+debug = []
+# Default the `allow_thp` option to off on Linux/Android; no-op elsewhere.
+no_thp = []
+# Use the local-dynamic TLS model (needed when the final artifact is dlopen'ed).
+local_dynamic_tls = []
+
+[build-dependencies]
+cc = "1.2"
