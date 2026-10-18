@@ -75,3 +75,7 @@ cargo bench -p bench                  # compare mi_malloc, mi_malloc_aligned and
 ```
 
 The xtask needs libclang. Run the checks natively on each target, because the headers include the target's libc headers. On musl hosts, build the xtask with `RUSTFLAGS="-C target-feature=-crt-static"`: a statically linked musl binary cannot `dlopen` libclang.
+
+## License
+
+MIT, see [LICENSE](LICENSE). The vendored mimalloc sources in `mimalloc-rust-sys/c_src/mimalloc` keep their own MIT license from Microsoft Corporation and Daan Leijen.
