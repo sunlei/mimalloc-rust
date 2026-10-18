@@ -36,7 +36,7 @@ Only `include/` and `src/static.c` (which `#include`s every other source file) t
 
 - **Static override linking.** Upstream recommends linking `mimalloc.o` as the first object. Cargo cannot place an object from a dependency on the final link line, so the archive is linked with `+whole-archive` instead. This guarantees the object is included but not where.
   - Without it, a release program that calls no `mi_*` function kept libc's `malloc` on the GNU ld targets (aarch64 gnu, both musl); x86_64 gnu (rust-lld) and macOS (ld64) happened to work.
-  - On musl the link only succeeds when the archive comes before `libc.a`. rustc does this for executables, integration tests and doctests; the `mimalloc-rust` lib test binary is the one observed exception, so it is disabled (it has no unit tests). Details in [`docs/known-issues.md`](../docs/known-issues.md).
+  - On musl the archive must also come before `libc.a`. rustc only orders a crate before its dependencies, so under `override` the sys crate declares `extern crate std` (`src/lib.rs`); without it, the test binary of a `no_std` crate linked `libc.a` first and failed with duplicate `malloc` definitions. Details in [`docs/known-issues.md`](../docs/known-issues.md).
 
 ## Bindings
 

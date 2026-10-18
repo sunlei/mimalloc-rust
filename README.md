@@ -40,7 +40,7 @@ Only one copy of mimalloc may be linked: the sys crate declares `links = "mimall
 | `debug` | mimalloc internal invariant checks (`MI_DEBUG=2`), independent of the Cargo profile |
 | `no_thp` | Defaults mimalloc's `allow_thp` option to off on Linux/Android; it can still be re-enabled at runtime. No effect elsewhere |
 | `local_dynamic_tls` | Local-dynamic TLS model, needed when the final artifact is loaded with `dlopen` (ELF). musl targets always use it |
-| `override` | Replaces the C allocation functions (`malloc`, `free`, `posix_memalign`, ...) of the executable, so C code, libc itself and `std::alloc::System` also allocate from mimalloc. See [Overriding malloc](#overriding-malloc) |
+| `override` | Replaces the C allocation functions (`malloc`, `free`, `posix_memalign`, ...) of the executable, so C code, allocations inside libc (checked with `asprintf`) and `std::alloc::System` also use mimalloc. See [Overriding malloc](#overriding-malloc) |
 
 ## Overriding malloc
 
@@ -48,7 +48,7 @@ With `override`, linking the crate is enough: `#[global_allocator]` is optional,
 
 - Executables only. In a `cdylib` or `dylib` the replacement does not reliably take effect, and the build cannot detect the crate type, so this is not checked.
 - On Linux the executable's own `malloc` definitions take precedence over libc's. On macOS a constructor makes mimalloc the default malloc zone.
-- On musl the static `libc.a` also defines `malloc`; the link succeeds only when rustc places the mimalloc archive before it, as it does for ordinary executables. Otherwise the link fails with `multiple definition of 'malloc'` rather than silently keeping musl's allocator. See [`docs/known-issues.md`](docs/known-issues.md).
+- On musl the static `libc.a` also defines `malloc`, so the mimalloc archive must come before it on the link line; the sys crate depends on std under `override` so that rustc orders it that way. See [`docs/known-issues.md`](docs/known-issues.md).
 - Enabling it on a target outside the list below is a build error.
 
 ## Supported targets
