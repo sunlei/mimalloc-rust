@@ -1,7 +1,8 @@
 [workspace]
 resolver = "3"
-members = ["mimalloc-rust", "mimalloc-rust-sys", "xtask"]
-# Keep bindgen (xtask) out of everyday `cargo build` / `cargo test`.
+members = ["downstream-c", "mimalloc-rust", "mimalloc-rust-sys", "xtask"]
+# Keep bindgen (xtask) out of everyday `cargo build` / `cargo test`, and downstream-c too:
+# it enables `override`, which would unify into the other members' tests.
 default-members = ["mimalloc-rust", "mimalloc-rust-sys"]
 
 [workspace.package]

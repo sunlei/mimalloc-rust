@@ -44,6 +44,10 @@ jobs:
           done
       # The override probe only discriminates in release; see tests/override_probe.rs.
       - run: cargo test --locked --release --features mimalloc-rust/override
+      # Static musl executables cannot load the shared library this test builds.
+      - name: Override across a C shared library
+        if: ${{ !matrix.container }}
+        run: cargo test --locked --release -p downstream-c
       # A crt-static musl binary cannot dlopen libclang, so build the xtask dynamically there.
       - name: Bindings match this target
         env:
