@@ -1,0 +1,20 @@
+[package]
+name = "mimalloc-rust"
+description = "A global allocator backed by a vendored, statically linked mimalloc v3"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+repository.workspace = true
+
+[features]
+secure = ["mimalloc-rust-sys/secure"]
+debug = ["mimalloc-rust-sys/debug"]
+no_thp = ["mimalloc-rust-sys/no_thp"]
+local_dynamic_tls = ["mimalloc-rust-sys/local_dynamic_tls"]
+
+[dependencies]
+mimalloc-rust-sys = { path = "../mimalloc-rust-sys" }
+
+[dev-dependencies]
+serde_json = "1"
