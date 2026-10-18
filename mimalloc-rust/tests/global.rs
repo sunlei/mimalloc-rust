@@ -153,6 +153,28 @@ fn every_live_block_is_aligned() {
     }
 }
 
+// An alignment above the size is met by over-allocation, which can place a small request in
+// a medium or singleton page (upstream issue #1400), so freeing must not assume such a
+// block lives in a small page. Many live blocks make that placement likely.
+#[test]
+fn over_aligned_small_blocks_can_be_freed() {
+    const LIVE: usize = 200;
+    for align in [1024, 16 * 1024, 128 * 1024] {
+        let layout = layout(8, align);
+        let blocks: Vec<*mut u8> = (0..LIVE)
+            .map(|_| unsafe { MiMalloc.alloc(layout) })
+            .collect();
+        for &block in &blocks {
+            assert!(!block.is_null(), "{layout:?}");
+            assert_eq!(block.addr() % align, 0, "{layout:?}");
+            unsafe { block.write_bytes(0xA5, layout.size()) };
+        }
+        for &block in &blocks {
+            unsafe { MiMalloc.dealloc(block, layout) };
+        }
+    }
+}
+
 // Crosses the boundary between `mi_realloc` and `mi_realloc_aligned` in both directions.
 #[test]
 fn realloc_keeps_alignment_and_contents_across_entry_points() {
