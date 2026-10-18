@@ -9,11 +9,12 @@ Guidance for coding agents working in this repository. The [README](README.md) c
 | `mimalloc-rust-sys/` | Compiles the vendored mimalloc (`c_src/mimalloc`, a submodule pinned to an upstream release) in `build.rs` and exposes the generated bindings in `src/bindings.rs` |
 | `mimalloc-rust/` | `MiMalloc` (`GlobalAlloc`), `version()`, `usable_size()`, `stats_json()` |
 | `bench/` | Criterion benchmark of the allocation entry points |
+| `dlopen-plugin/` | Test-only crate: a `cdylib` using `MiMalloc` with `local_dynamic_tls`, which its test loads with `dlopen` after filling glibc's static TLS surplus |
 | `downstream-c/` | Test-only crate: a C shared library built against `DEP_MIMALLOC_INCLUDE_DIR`, checking `override` across the library boundary |
 | `upstream-tests/` | Test-only crate: compiles upstream's `test/test-api.c` and `test/test-stress.c` with `DEP_MIMALLOC_DEFINES` and runs each as a `harness = false` test |
 | `xtask/` | `bindgen`, `bindgen --check` and `check-symbols` |
 
-`default-members` holds only the two library crates. Keep it that way: `bench` would make every `cargo test` build criterion, `xtask` needs libclang, `downstream-c` enables `override`, which Cargo would unify into the other members' tests, and `upstream-tests` adds a multi-second stress run.
+`default-members` holds only the two library crates. Keep it that way: `bench` would make every `cargo test` build criterion, `xtask` needs libclang, `downstream-c` and `dlopen-plugin` enable `override` and `local_dynamic_tls`, which Cargo would unify into the other members' tests, and `upstream-tests` adds a multi-second stress run.
 
 ## Setup
 
@@ -34,6 +35,7 @@ cargo test --locked --release -p upstream-tests --features mimalloc-rust-sys/sec
 cargo test --locked --features mimalloc-rust/<feature>[,mimalloc-rust/<feature>]
 cargo test --locked --release --features mimalloc-rust/override
 cargo test --locked --release -p downstream-c       # not on static musl
+cargo test --locked --release -p dlopen-plugin      # glibc only; skips itself elsewhere
 cargo run --locked -p xtask -- bindgen --check
 cargo run --locked -p xtask -- check-symbols
 cargo +nightly fmt --all --check

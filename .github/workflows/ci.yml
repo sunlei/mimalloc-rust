@@ -76,6 +76,10 @@ jobs:
       - name: Override across a C shared library
         if: ${{ !matrix.container }}
         run: cargo test --locked --release -p downstream-c
+      # The static TLS surplus that `local_dynamic_tls` avoids depending on is glibc's.
+      - name: Plugin loaded with dlopen
+        if: runner.os == 'Linux' && !matrix.container
+        run: cargo test --locked --release -p dlopen-plugin
       # A crt-static musl binary cannot dlopen libclang, so build the xtask dynamically there.
       - name: Bindings match this target
         env:

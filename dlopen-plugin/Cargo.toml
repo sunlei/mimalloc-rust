@@ -1,0 +1,28 @@
+[package]
+name = "dlopen-plugin"
+description = "Tests local_dynamic_tls with a plugin that a process loads through dlopen"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+# `rlib` makes `cargo test` build the library, and with it the cdylib, for the test to load;
+# a `cdylib` alone would only be checked.
+[lib]
+crate-type = ["cdylib", "rlib"]
+test = false
+doctest = false
+
+[dependencies]
+mimalloc-rust = { path = "../mimalloc-rust", features = ["local_dynamic_tls"] }
+
+[build-dependencies]
+cc.workspace = true
+
+# Loads the plugin into a process of its own, whose static TLS the test fills first.
+[[test]]
+name = "dlopen"
+harness = false
+
+[lints]
+workspace = true
