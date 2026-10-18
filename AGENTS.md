@@ -23,29 +23,10 @@ Guidance for coding agents working in this repository. The [README](README.md) c
 
 ## Verification
 
-CI (`.github/workflows/ci.yml`) runs the following; run the parts your change affects before presenting it.
-
-```sh
-cargo test --locked
-cargo test --locked --release
-cargo test --locked --release -p upstream-tests
-MIMALLOC_GUARDED_SAMPLE_RATE=1024 cargo test --locked --release -p upstream-tests --features mimalloc-rust-sys/debug
-cargo test --locked --release -p upstream-tests --features mimalloc-rust-sys/secure
-# each of: secure debug no_thp local_dynamic_tls secure,debug override override,secure override,local_dynamic_tls override,debug
-cargo test --locked --features mimalloc-rust/<feature>[,mimalloc-rust/<feature>]
-cargo test --locked --release --features mimalloc-rust/override
-cargo test --locked --release -p downstream-c       # not on static musl
-cargo test --locked --release -p dlopen-plugin      # glibc only; skips itself elsewhere
-cargo run --locked -p xtask -- bindgen --check
-cargo run --locked -p xtask -- check-symbols
-cargo +nightly fmt --all --check
-cargo +nightly clippy --locked --workspace --all-targets --all-features -- -D warnings
-RUSTDOCFLAGS="-D warnings" cargo +nightly doc --locked --no-deps -p mimalloc-rust -p mimalloc-rust-sys
-cargo +1.99.0 test --locked                         # MSRV
-```
+`.github/workflows/ci.yml` is the authoritative list of checks; run the ones your change affects before presenting it. The usual minimum is `cargo test --locked`, `cargo +nightly fmt --all --check` and `cargo +nightly clippy --locked --workspace --all-targets --all-features -- -D warnings`.
 
 - The `override` probe (`mimalloc-rust/tests/override_probe.rs`) only discriminates in release builds.
-- `test-api` and `test-api-fill` print `succeeded: N` and return the number of failed checks; the stress tests abort on corruption. The Cortex-A72 job runs them all under qemu as well. With `debug`, guarded sampling only happens when `MIMALLOC_GUARDED_SAMPLE_RATE` is set before the process starts; the `guarded` line of the stress statistics shows whether it did. Keep `--release`: cc compiles mimalloc at `-O0` in dev builds, which is not the code that ships.
+- `test-api` and `test-api-fill` print `succeeded: N` and return the number of failed checks; the stress tests abort on corruption. The Cortex-A72 job runs them all under qemu as well. With `debug`, guarded sampling only happens when `MIMALLOC_GUARDED_SAMPLE_RATE` is set before the process starts; the `guarded` line of the stress statistics shows whether it did. Run them with `--release`, as CI does: cc compiles mimalloc at `-O0` in dev builds, which is not the code that ships.
 - `xtask` checks are per target: the headers pull in the target's libc headers, so a pass on macOS says nothing about Linux.
 - When judging a CI run, read the logs for the number of tests that passed, not only the job status.
 
