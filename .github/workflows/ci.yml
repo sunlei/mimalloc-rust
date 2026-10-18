@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.container }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: aarch64-apple-darwin, runner: macos-latest }
+          - { target: x86_64-unknown-linux-gnu, runner: ubuntu-24.04 }
+          - { target: aarch64-unknown-linux-gnu, runner: ubuntu-24.04-arm }
+          - { target: x86_64-unknown-linux-musl, runner: ubuntu-24.04, container: "rust:1.99-alpine" }
+          - { target: aarch64-unknown-linux-musl, runner: ubuntu-24.04-arm, container: "rust:1.99-alpine" }
+    steps:
+      - name: Install build tools (Alpine)
+        if: matrix.container
+        run: apk add --no-cache bash git clang-dev binutils
+      - name: Install libclang (Ubuntu)
+        if: runner.os == 'Linux' && !matrix.container
+        run: sudo apt-get update && sudo apt-get install -y libclang-dev
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install Rust
+        if: ${{ !matrix.container }}
+        run: rustup toolchain install stable --profile minimal && rustup default stable
+      - run: cargo test --locked
+      - run: cargo test --locked --release
+      - name: Test features
+        shell: bash
+        run: |
+          for features in secure debug no_thp local_dynamic_tls secure,debug; do
+            cargo test --locked --features "mimalloc-rust/${features//,/,mimalloc-rust/}"
+          done
+      - name: Bindings match this target
+        run: cargo run --locked -p xtask -- bindgen --check
+      - name: Bound functions are linkable
+        run: cargo run --locked -p xtask -- check-symbols
+
+  # Rust's Linux aarch64 targets are ARMv8.0; prove the C code runs without LSE atomics.
+  armv8-0:
+    name: ${{ matrix.target }} on Cortex-A72 (no LSE)
+    runs-on: ubuntu-24.04-arm
+    container: ${{ matrix.container }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: aarch64-unknown-linux-gnu, container: "rust:1.99-trixie", install: "apt-get update && apt-get install -y qemu-user" }
+          - { target: aarch64-unknown-linux-musl, container: "rust:1.99-alpine", install: "apk add --no-cache git qemu-aarch64" }
+    env:
+      CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER: qemu-aarch64 -cpu cortex-a72
+      CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUNNER: qemu-aarch64 -cpu cortex-a72
+    steps:
+      - run: ${{ matrix.install }}
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: cargo test --locked --target ${{ matrix.target }}
+      - run: cargo test --locked --release --target ${{ matrix.target }}
+
+  msrv:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: rustup toolchain install 1.99.0 --profile minimal
+      - run: cargo +1.99.0 test --locked
