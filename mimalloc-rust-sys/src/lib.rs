@@ -14,6 +14,13 @@
 #[cfg(feature = "override")]
 extern crate std;
 
+/// Whether the library was built with `MI_GUARDED`, which the `debug` feature enables.
+///
+/// With guarded sampling and the `guarded_precise` option enabled at run time, `mi_malloc`
+/// can return blocks that are not 16-byte aligned. Features are unified across the dependency
+/// graph, so dependents should read this instead of their own `debug` feature.
+pub const MI_GUARDED: bool = cfg!(feature = "debug");
+
 /// C `wchar_t`, used by `mi_wcsdup` and `mi_wdupenv_s`.
 ///
 /// Generated bindings would pin the signedness of whichever target ran bindgen.

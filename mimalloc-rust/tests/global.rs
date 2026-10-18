@@ -132,6 +132,68 @@ fn realloc_preserves_contents_when_growing_and_shrinking() {
     }
 }
 
+// Layouts whose alignment `mi_malloc` already provides take the `mi_malloc` path, which
+// relies on every block of a size class being aligned, not just the first one of a page.
+#[test]
+fn every_live_block_is_aligned() {
+    const LIVE: usize = 512;
+    for size in (1_usize..=1100).chain([2240, 4096, 4640, 70_000]) {
+        let align = (1 << size.ilog2()).min(16);
+        let layout = layout(size, align);
+        let blocks: Vec<*mut u8> = (0..LIVE)
+            .map(|_| unsafe { MiMalloc.alloc(layout) })
+            .collect();
+        for &block in &blocks {
+            assert!(!block.is_null(), "{layout:?}");
+            assert_eq!(block.addr() % align, 0, "{layout:?}");
+        }
+        for &block in &blocks {
+            unsafe { MiMalloc.dealloc(block, layout) };
+        }
+    }
+}
+
+// Crosses the boundary between `mi_realloc` and `mi_realloc_aligned` in both directions.
+#[test]
+fn realloc_keeps_alignment_and_contents_across_entry_points() {
+    const SIZES: [usize; 12] = [1, 7, 8, 9, 16, 17, 48, 224, 1024, 1025, 4640, 70_000];
+    let expected: Vec<u8> = (0..70_000).map(pattern).collect();
+    for align in [1, 2, 4, 8, 16, 32, 64, 4096] {
+        for from in SIZES {
+            for to in SIZES {
+                let block = unsafe { MiMalloc.alloc(layout(from, align)) };
+                assert!(!block.is_null());
+                unsafe { block.copy_from_nonoverlapping(expected.as_ptr(), from) };
+
+                let moved = unsafe { MiMalloc.realloc(block, layout(from, align), to) };
+                assert!(!moved.is_null(), "{from} -> {to}, align {align}");
+                assert_eq!(moved.addr() % align, 0, "{from} -> {to}, align {align}");
+                let kept = from.min(to);
+                assert_eq!(
+                    unsafe { slice::from_raw_parts(moved, kept) },
+                    &expected[..kept],
+                    "{from} -> {to}, align {align}"
+                );
+                unsafe { MiMalloc.dealloc(moved, layout(to, align)) };
+            }
+        }
+    }
+}
+
+// The aligned functions would over-allocate 48 bytes into a 64-byte block
+// (see docs/known-issues.md). With `MI_GUARDED`, `MiMalloc` keeps using them.
+#[test]
+fn small_layouts_get_a_block_of_their_own_size_class() {
+    if mimalloc_rust_sys::MI_GUARDED {
+        return;
+    }
+    let layout = layout(48, 8);
+    let block = unsafe { MiMalloc.alloc(layout) };
+    assert!(!block.is_null());
+    assert_eq!(unsafe { mimalloc_rust::usable_size(block) }, 48);
+    unsafe { MiMalloc.dealloc(block, layout) };
+}
+
 fn filled_blocks() -> Vec<Box<[u8]>> {
     (0..1000)
         .map(|i| (0..16 + i % 2048).map(pattern).collect())

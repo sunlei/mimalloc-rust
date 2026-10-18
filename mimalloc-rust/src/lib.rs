@@ -23,20 +23,49 @@ pub use stats::{StatsJson, stats_json};
 #[derive(Clone, Copy, Debug, Default)]
 pub struct MiMalloc;
 
-// SAFETY: the `mi_*_aligned` functions return null or a block of at least `size` bytes
-// aligned to `align`, and `mi_free` releases any such block from any thread.
+/// mimalloc's `MI_MAX_ALIGN_SIZE` (`types.h`), which the build script does not override.
+const MI_MAX_ALIGN_SIZE: usize = 16;
+
+/// Whether `mi_malloc(size)` already returns blocks aligned to `align`.
+///
+/// Size classes above 8 bytes are multiples of 16 bytes and pages start their blocks at a
+/// multiple of 16, so every such block is 16-byte aligned; the 8-byte class only serves
+/// requests of at most 8 bytes. This is the condition std's `System` uses on Unix to pick
+/// `malloc`. The `mi_*_aligned` functions would also work, but on a fast-path miss they
+/// over-allocate any size class that is not a power of two, which costs time and memory
+/// (see `docs/known-issues.md`).
+#[inline]
+const fn mi_malloc_aligns(size: usize, align: usize) -> bool {
+    !ffi::MI_GUARDED && align <= MI_MAX_ALIGN_SIZE && align <= size
+}
+
+// SAFETY: `mi_malloc`, `mi_zalloc` and `mi_realloc` are only used when `mi_malloc_aligns`
+// holds, and otherwise the `mi_*_aligned` functions. Both return null or a block of at least
+// `size` bytes aligned to `align`, and `mi_free` releases either from any thread.
 unsafe impl GlobalAlloc for MiMalloc {
     #[inline]
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        // SAFETY: `Layout` guarantees a non-zero power-of-two alignment, the only
-        // requirement mimalloc places on `alignment`.
-        unsafe { ffi::mi_malloc_aligned(layout.size(), layout.align()).cast() }
+        let block = if mi_malloc_aligns(layout.size(), layout.align()) {
+            // SAFETY: `mi_malloc` has no preconditions.
+            unsafe { ffi::mi_malloc(layout.size()) }
+        } else {
+            // SAFETY: `Layout` guarantees a non-zero power-of-two alignment, the only
+            // requirement mimalloc places on `alignment`.
+            unsafe { ffi::mi_malloc_aligned(layout.size(), layout.align()) }
+        };
+        block.cast()
     }
 
     #[inline]
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
-        // SAFETY: as in `alloc`.
-        unsafe { ffi::mi_zalloc_aligned(layout.size(), layout.align()).cast() }
+        let block = if mi_malloc_aligns(layout.size(), layout.align()) {
+            // SAFETY: as in `alloc`.
+            unsafe { ffi::mi_zalloc(layout.size()) }
+        } else {
+            // SAFETY: as in `alloc`.
+            unsafe { ffi::mi_zalloc_aligned(layout.size(), layout.align()) }
+        };
+        block.cast()
     }
 
     #[inline]
@@ -48,10 +77,20 @@ unsafe impl GlobalAlloc for MiMalloc {
 
     #[inline]
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
-        // SAFETY: the caller guarantees `ptr` is a live block allocated with `layout` and
-        // that `new_size` is valid for `layout.align()`. On failure mimalloc returns null
-        // and leaves the original block allocated, as `GlobalAlloc::realloc` requires.
-        unsafe { ffi::mi_realloc_aligned(ptr.cast(), new_size, layout.align()).cast() }
+        // In both branches, the caller guarantees `ptr` is a live block allocated with
+        // `layout` and that `new_size` is valid for `layout.align()`. On failure mimalloc
+        // returns null and leaves the original block allocated, as `GlobalAlloc::realloc`
+        // requires.
+        let block = if mi_malloc_aligns(new_size, layout.align()) {
+            // SAFETY: see above. `mi_realloc` either keeps `ptr`, which is aligned to
+            // `layout.align()`, or moves the contents to a block from `mi_malloc`, which
+            // `mi_malloc_aligns` covers. It accepts blocks from the aligned functions too.
+            unsafe { ffi::mi_realloc(ptr.cast(), new_size) }
+        } else {
+            // SAFETY: see above.
+            unsafe { ffi::mi_realloc_aligned(ptr.cast(), new_size, layout.align()) }
+        };
+        block.cast()
     }
 }
 
