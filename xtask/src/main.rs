@@ -2,17 +2,20 @@
 //!
 //! - `bindgen`: regenerate `mimalloc-rust-sys/src/bindings.rs` from the vendored headers.
 //! - `bindgen --check`: regenerate in memory and fail if the committed file differs.
+//! - `check-symbols`: build the static library and fail if any bound function has no
+//!   defined symbol in it. This proves presence only, not signatures or visibility.
 //!
-//! Run the check natively on every supported target: the headers include libc headers
+//! Run the checks natively on every supported target: the headers include libc headers
 //! (`assert.h`, `string.h`), so each target's own sysroot must be visible to libclang.
 
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
-use std::process::ExitCode;
+use std::process::{Command, ExitCode, Stdio};
 use std::{env, fs};
 
 const BINDINGS: &str = "mimalloc-rust-sys/src/bindings.rs";
 const INCLUDE_DIR: &str = "mimalloc-rust-sys/c_src/mimalloc/include";
-const USAGE: &str = "usage: cargo run -p xtask -- bindgen [--check]";
+const USAGE: &str = "usage: cargo run -p xtask -- bindgen [--check] | check-symbols";
 
 fn main() -> ExitCode {
     let args: Vec<String> = env::args().skip(1).collect();
@@ -20,6 +23,7 @@ fn main() -> ExitCode {
     match args.as_slice() {
         ["bindgen"] => bindgen(false),
         ["bindgen", "--check"] => bindgen(true),
+        ["check-symbols"] => check_symbols(),
         _ => {
             eprintln!("{USAGE}");
             ExitCode::FAILURE
@@ -57,6 +61,79 @@ fn bindgen(check: bool) -> ExitCode {
     }
 }
 
+fn check_symbols() -> ExitCode {
+    let root = workspace_root();
+    let bindings = fs::read_to_string(root.join(BINDINGS)).expect("reading committed bindings");
+    let declared: BTreeSet<&str> = bindings
+        .lines()
+        .filter_map(|line| line.trim_start().strip_prefix("pub fn "))
+        .filter_map(|rest| rest.split('(').next())
+        .collect();
+
+    let library = build_static_library(&root);
+    let defined = defined_symbols(&library);
+    let missing: Vec<&str> = declared
+        .iter()
+        .copied()
+        .filter(|name| !defined.contains(*name))
+        .collect();
+    if missing.is_empty() {
+        println!("all {} bound functions are defined in {}", declared.len(), library.display());
+        return ExitCode::SUCCESS;
+    }
+    eprintln!("functions bound but not defined in {}:", library.display());
+    for name in missing {
+        eprintln!("  {name}");
+    }
+    ExitCode::FAILURE
+}
+
+/// Builds the sys crate and returns the path of the static library its build script produced.
+fn build_static_library(root: &Path) -> PathBuf {
+    let cargo = env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
+    let output = Command::new(cargo)
+        .current_dir(root)
+        .args(["build", "--package", "mimalloc-rust-sys", "--message-format=json"])
+        .stderr(Stdio::inherit())
+        .output()
+        .expect("running cargo build");
+    assert!(output.status.success(), "cargo build failed");
+    let stdout = String::from_utf8(output.stdout).expect("cargo emits UTF-8 JSON");
+    let out_dir = stdout
+        .lines()
+        .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+        .filter(|message| message["reason"] == "build-script-executed")
+        .filter(|message| {
+            message["package_id"]
+                .as_str()
+                .is_some_and(|id| id.contains("mimalloc-rust-sys"))
+        })
+        .find_map(|message| message["out_dir"].as_str().map(PathBuf::from))
+        .expect("cargo reported the mimalloc-rust-sys build script output directory");
+    out_dir.join("libmimalloc.a")
+}
+
+fn defined_symbols(library: &Path) -> BTreeSet<String> {
+    let output = Command::new("nm")
+        .args(["-g", "-P"])
+        .arg(library)
+        .output()
+        .expect("running nm");
+    assert!(output.status.success(), "nm failed on {}", library.display());
+    // Mach-O prefixes C symbols with an underscore.
+    let prefix = if cfg!(target_vendor = "apple") { "_" } else { "" };
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .filter_map(|line| {
+            let mut fields = line.split_whitespace();
+            let (name, kind) = (fields.next()?, fields.next()?);
+            (kind != "U" && kind.len() == 1).then_some(name)
+        })
+        .filter_map(|name| name.strip_prefix(prefix))
+        .map(str::to_owned)
+        .collect()
+}
+
 fn generate_bindings(include_dir: &Path) -> String {
     bindgen::Builder::default()
         .header_contents("wrapper.h", "#include <mimalloc.h>\n#include <mimalloc-stats.h>\n")
@@ -66,6 +143,9 @@ fn generate_bindings(include_dir: &Path) -> String {
         .allowlist_var("MI_.*")
         // Signedness differs between targets; the sys crate defines it per target.
         .blocklist_type("wchar_t")
+        // Declared in mimalloc.h but not linkable: the first two have no definition in
+        // the v3.5.3 sources, the last two only exist with MI_MALLOC_OVERRIDE.
+        .blocklist_function("mi_collect_reduce|mi_stats_merge|mi_malloc_size|mi_malloc_usable_size")
         .use_core()
         // `char` is unsigned on Linux aarch64 and signed elsewhere; `c_char` keeps one
         // file valid for every target.

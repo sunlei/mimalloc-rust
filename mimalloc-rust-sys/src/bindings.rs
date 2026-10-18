@@ -888,9 +888,7 @@ unsafe extern "C" {
         max_secs: f64,
         pages_reserved: *mut usize,
     ) -> core::ffi::c_int;
-    pub fn mi_collect_reduce(target_thread_owned: usize);
     pub fn mi_stats_reset();
-    pub fn mi_stats_merge();
     pub fn mi_stats_print(out: *mut core::ffi::c_void);
     pub fn mi_stats_print_out(out: mi_output_fun, arg: *mut core::ffi::c_void);
     pub fn mi_option_is_enabled(option: mi_option_t) -> bool;
@@ -912,9 +910,7 @@ unsafe extern "C" {
         p: *mut core::ffi::c_void,
         newsize: usize,
     ) -> *mut core::ffi::c_void;
-    pub fn mi_malloc_size(p: *const core::ffi::c_void) -> usize;
     pub fn mi_malloc_good_size(size: usize) -> usize;
-    pub fn mi_malloc_usable_size(p: *const core::ffi::c_void) -> usize;
     pub fn mi_posix_memalign(
         p: *mut *mut core::ffi::c_void,
         alignment: usize,

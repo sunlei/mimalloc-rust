@@ -8,3 +8,4 @@ publish.workspace = true
 
 [dependencies]
 bindgen = { version = "0.73", default-features = false, features = ["prettyplease", "runtime"] }
+serde_json = "1"
