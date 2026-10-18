@@ -14,7 +14,7 @@ fn stats_get_accepts_header_initialized_like_mi_stats_init() {
     let mut stats: mi_stats_t = unsafe { core::mem::zeroed() };
     stats.size = size_of::<mi_stats_t>();
     stats.version = MI_STAT_VERSION as usize;
-    assert!(unsafe { mi_stats_get(&mut stats) });
+    assert!(unsafe { mi_stats_get(&raw mut stats) });
 }
 
 #[test]

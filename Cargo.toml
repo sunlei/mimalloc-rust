@@ -10,3 +10,49 @@ edition = "2024"
 rust-version = "1.99"
 publish = false
 repository = "https://github.com/sunlei/mimalloc-rust"
+
+[workspace.dependencies]
+serde_json = "1"
+
+# Members opt in with `[lints] workspace = true`. Only lints that exist on stable
+# clippy are listed, so stable and nightly clippy agree on the set.
+[workspace.lints.rust]
+unreachable_pub = "deny"
+
+[workspace.lints.clippy]
+# Debug markers
+dbg_macro = "warn"
+
+# Unsafe and raw pointers
+multiple_unsafe_ops_per_block = "warn"
+unnecessary_safety_comment = "warn"
+unnecessary_safety_doc = "warn"
+borrow_as_ptr = "warn"
+ptr_as_ptr = "warn"
+ref_as_ptr = "warn"
+mem_forget = "warn"
+
+# Code simplification
+needless_continue = "warn"
+needless_pass_by_value = "warn"
+unnecessary_wraps = "warn"
+redundant_clone = "warn"
+implicit_clone = "warn"
+map_unwrap_or = "warn"
+unnested_or_patterns = "warn"
+checked_conversions = "warn"
+
+# Style
+use_self = "warn"
+uninlined_format_args = "warn"
+semicolon_if_nothing_returned = "warn"
+explicit_iter_loop = "warn"
+ignored_unit_patterns = "warn"
+items_after_statements = "warn"
+if_not_else = "warn"
+manual_assert = "warn"
+
+# Robustness
+exit = "warn"
+large_stack_arrays = "warn"
+panic_in_result_fn = "warn"

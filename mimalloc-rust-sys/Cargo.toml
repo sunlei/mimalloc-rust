@@ -22,3 +22,6 @@ override = []
 
 [build-dependencies]
 cc = "1.8"
+
+[lints]
+workspace = true

@@ -10,12 +10,11 @@ fn main() {
     let manifest_dir = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").expect("set by Cargo"));
     let mimalloc_dir = manifest_dir.join("c_src/mimalloc");
     let static_source = mimalloc_dir.join("src/static.c");
-    if !static_source.is_file() {
-        panic!(
-            "mimalloc sources are missing at {}; run `git submodule update --init`",
-            mimalloc_dir.display()
-        );
-    }
+    assert!(
+        static_source.is_file(),
+        "mimalloc sources are missing at {}; run `git submodule update --init`",
+        mimalloc_dir.display()
+    );
     println!("cargo:rerun-if-changed=c_src/mimalloc/include");
     println!("cargo:rerun-if-changed=c_src/mimalloc/src");
 
@@ -60,12 +59,11 @@ fn main() {
             ),
             ("macos", _, "aarch64") | ("linux", "gnu" | "musl", "x86_64" | "aarch64")
         );
-        if !verified {
-            panic!(
-                "the `override` feature is not supported on {}",
-                cfg("TARGET")
-            );
-        }
+        assert!(
+            verified,
+            "the `override` feature is not supported on {}",
+            cfg("TARGET")
+        );
         build
             .define("MI_MALLOC_OVERRIDE", None)
             .flag("-fno-builtin-malloc");

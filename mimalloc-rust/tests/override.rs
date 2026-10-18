@@ -24,36 +24,32 @@ fn from_mimalloc<T>(ptr: *const T) -> bool {
 
 #[test]
 fn c_allocation_functions_return_mimalloc_blocks() {
-    unsafe {
-        let block = malloc(100);
-        assert!(from_mimalloc(block));
+    let block = unsafe { malloc(100) };
+    assert!(from_mimalloc(block));
 
-        let block = realloc(block, 100_000);
-        assert!(from_mimalloc(block));
-        free(block);
+    let block = unsafe { realloc(block, 100_000) };
+    assert!(from_mimalloc(block));
+    unsafe { free(block) };
 
-        let zeroed = calloc(10, 10);
-        assert!(from_mimalloc(zeroed));
-        free(zeroed);
+    let zeroed = unsafe { calloc(10, 10) };
+    assert!(from_mimalloc(zeroed));
+    unsafe { free(zeroed) };
 
-        let mut aligned = core::ptr::null_mut();
-        assert_eq!(posix_memalign(&mut aligned, 4096, 100), 0);
-        assert!(from_mimalloc(aligned));
-        assert_eq!(aligned.addr() % 4096, 0);
-        free(aligned);
-    }
+    let mut aligned = core::ptr::null_mut();
+    assert_eq!(unsafe { posix_memalign(&raw mut aligned, 4096, 100) }, 0);
+    assert!(from_mimalloc(aligned));
+    assert_eq!(aligned.addr() % 4096, 0);
+    unsafe { free(aligned) };
 }
 
 // mimalloc replaces `strdup` and friends directly, so this uses `asprintf`, which libc
 // implements itself on top of `malloc`.
 #[test]
 fn allocations_inside_libc_come_from_mimalloc() {
-    unsafe {
-        let mut text = core::ptr::null_mut();
-        assert!(asprintf(&mut text, c"%s %d".as_ptr(), c"libc".as_ptr(), 42) > 0);
-        assert!(from_mimalloc(text));
-        free(text.cast());
-    }
+    let mut text = core::ptr::null_mut();
+    assert!(unsafe { asprintf(&raw mut text, c"%s %d".as_ptr(), c"libc".as_ptr(), 42) } > 0);
+    assert!(from_mimalloc(text));
+    unsafe { free(text.cast()) };
 }
 
 #[test]
@@ -63,10 +59,8 @@ fn system_allocator_uses_mimalloc() {
         Layout::from_size_align(64, 4096),
     ] {
         let layout = layout.unwrap();
-        unsafe {
-            let block = System.alloc(layout);
-            assert!(from_mimalloc(block), "{layout:?}");
-            System.dealloc(block, layout);
-        }
+        let block = unsafe { System.alloc(layout) };
+        assert!(from_mimalloc(block), "{layout:?}");
+        unsafe { System.dealloc(block, layout) };
     }
 }
