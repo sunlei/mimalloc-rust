@@ -54,6 +54,8 @@ jobs:
         if: ${{ !matrix.container }}
       - run: cargo test --locked
       - run: cargo test --locked --release
+      - name: Upstream C tests
+        run: cargo test --locked --release -p upstream-tests
       - name: Test features
         shell: bash
         run: |
@@ -103,6 +105,8 @@ jobs:
       # Only the release run: the dev build differs in optimization level alone, which does
       # not decide whether LSE instructions appear (`-moutline-atomics` does).
       - run: cargo test --locked --release --target ${{ matrix.target }}
+      - name: Upstream C tests
+        run: cargo test --locked --release --target ${{ matrix.target }} -p upstream-tests
 
   # Unpinned nightly by choice: new lints and formatting changes surface without manual bumps.
   lint:

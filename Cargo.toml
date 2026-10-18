@@ -1,8 +1,9 @@
 [workspace]
 resolver = "3"
-members = ["bench", "downstream-c", "mimalloc-rust", "mimalloc-rust-sys", "xtask"]
+members = ["bench", "downstream-c", "mimalloc-rust", "mimalloc-rust-sys", "upstream-tests", "xtask"]
 # Keep bindgen (xtask) and criterion (bench) out of everyday `cargo build` / `cargo test`,
 # and downstream-c too: it enables `override`, which would unify into the other members' tests.
+# upstream-tests runs upstream's multi-second stress test; CI runs it in its own step.
 default-members = ["mimalloc-rust", "mimalloc-rust-sys"]
 
 [workspace.package]

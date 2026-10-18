@@ -1,0 +1,25 @@
+[package]
+name = "upstream-tests"
+description = "Runs upstream mimalloc's C tests against the library mimalloc-rust-sys builds"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+mimalloc-rust-sys = { path = "../mimalloc-rust-sys" }
+
+[build-dependencies]
+cc.workspace = true
+
+# Each upstream test is a C program: run it as its own process with its exit status.
+[[test]]
+name = "api"
+harness = false
+
+[[test]]
+name = "stress"
+harness = false
+
+[lints]
+workspace = true

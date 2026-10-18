@@ -6,7 +6,10 @@
 //!
 //! Build scripts of crates that depend on this crate directly can read the directory of
 //! the matching headers from `DEP_MIMALLOC_INCLUDE_DIR`, for example to compile C code that
-//! includes `mimalloc.h`. Cargo does not pass it to crates further down the graph.
+//! includes `mimalloc.h`. C code that includes the internal headers under `mimalloc/` also
+//! needs the defines the library was compiled with, which `DEP_MIMALLOC_DEFINES` lists as
+//! space-separated `NAME=VALUE` pairs. Cargo does not pass either variable to crates further
+//! down the graph.
 //!
 //! # Using the bindings
 //!

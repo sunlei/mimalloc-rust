@@ -10,9 +10,10 @@ Guidance for coding agents working in this repository. The [README](README.md) c
 | `mimalloc-rust/` | `MiMalloc` (`GlobalAlloc`), `version()`, `usable_size()`, `stats_json()` |
 | `bench/` | Criterion benchmark of the allocation entry points |
 | `downstream-c/` | Test-only crate: a C shared library built against `DEP_MIMALLOC_INCLUDE_DIR`, checking `override` across the library boundary |
+| `upstream-tests/` | Test-only crate: compiles upstream's `test/test-api.c` and `test/test-stress.c` with `DEP_MIMALLOC_DEFINES` and runs each as a `harness = false` test |
 | `xtask/` | `bindgen`, `bindgen --check` and `check-symbols` |
 
-`default-members` holds only the two library crates. Keep it that way: `bench` would make every `cargo test` build criterion, `xtask` needs libclang, and `downstream-c` enables `override`, which Cargo would unify into the other members' tests.
+`default-members` holds only the two library crates. Keep it that way: `bench` would make every `cargo test` build criterion, `xtask` needs libclang, `downstream-c` enables `override`, which Cargo would unify into the other members' tests, and `upstream-tests` adds a multi-second stress run.
 
 ## Setup
 
@@ -26,6 +27,7 @@ CI (`.github/workflows/ci.yml`) runs the following; run the parts your change af
 ```sh
 cargo test --locked
 cargo test --locked --release
+cargo test --locked --release -p upstream-tests
 # each of: secure debug no_thp local_dynamic_tls secure,debug override override,secure override,local_dynamic_tls override,debug
 cargo test --locked --features mimalloc-rust/<feature>[,mimalloc-rust/<feature>]
 cargo test --locked --release --features mimalloc-rust/override
@@ -39,6 +41,7 @@ cargo +1.99.0 test --locked                         # MSRV
 ```
 
 - The `override` probe (`mimalloc-rust/tests/override_probe.rs`) only discriminates in release builds.
+- `test-api` prints `succeeded: N` and returns the number of failed checks; `test-stress` aborts on corruption. The Cortex-A72 job runs both under qemu as well.
 - `xtask` checks are per target: the headers pull in the target's libc headers, so a pass on macOS says nothing about Linux.
 - When judging a CI run, read the logs for the number of tests that passed, not only the job status.
 

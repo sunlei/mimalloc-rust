@@ -33,6 +33,8 @@ fn main() {
         .file(&static_source)
         .include(mimalloc_dir.join("include"))
         .include(mimalloc_dir.join("src"));
+    // Collected so that dependents can compile C code against the same configuration.
+    let mut defines: Vec<(&str, &str)> = Vec::new();
 
     // Without explicit values `MI_DEBUG` defaults to 2 whenever `NDEBUG` is undefined
     // (types.h), and cc never defines `NDEBUG`.
@@ -40,25 +42,22 @@ fn main() {
     // library and `cfg(mi_guarded)` (the sys crate's `MI_GUARDED`) on one decision.
     println!("cargo::rustc-check-cfg=cfg(mi_guarded)");
     if feature("DEBUG") {
-        build.define("MI_DEBUG", "2").define("MI_GUARDED", "1");
+        defines.extend([("MI_DEBUG", "2"), ("MI_GUARDED", "1")]);
         println!("cargo::rustc-cfg=mi_guarded");
     } else {
-        build
-            .define("MI_DEBUG", "0")
-            .define("NDEBUG", "1")
-            .define("MI_GUARDED", "0");
+        defines.extend([("MI_DEBUG", "0"), ("NDEBUG", "1"), ("MI_GUARDED", "0")]);
     }
     if feature("SECURE") {
-        build.define("MI_SECURE", "4");
+        defines.push(("MI_SECURE", "4"));
     }
     if is_musl {
         // Upstream cannot detect musl itself and expects the builder to set this.
-        build.define("MI_LIBC_MUSL", "1");
+        defines.push(("MI_LIBC_MUSL", "1"));
     }
     if feature("NO_THP") && matches!(target_os.as_str(), "linux" | "android") {
         // This is what upstream's `MI_NO_THP=ON` turns into; the C-level `MI_NO_THP`
         // macro only skips `madvise` and leaves the runtime option enabled.
-        build.define("MI_DEFAULT_ALLOW_THP", "0");
+        defines.push(("MI_DEFAULT_ALLOW_THP", "0"));
     }
     if feature("OVERRIDE") {
         // Replacing malloc can break a process silently, so only targets where the
@@ -76,15 +75,12 @@ fn main() {
             "the `override` feature is not supported on {}",
             cfg("TARGET")
         );
-        build
-            .define("MI_MALLOC_OVERRIDE", None)
-            .flag("-fno-builtin-malloc");
+        defines.push(("MI_MALLOC_OVERRIDE", "1"));
+        build.flag("-fno-builtin-malloc");
         if target_os == "macos" {
             // Interpose only takes effect in a shared library; the zone constructor does
             // the work in a static build. Both are kept to match upstream's defines.
-            build
-                .define("MI_OSX_ZONE", "1")
-                .define("MI_OSX_INTERPOSE", "1");
+            defines.extend([("MI_OSX_ZONE", "1"), ("MI_OSX_INTERPOSE", "1")]);
         }
         // A single-pass linker (GNU ld) reaches this archive before std references
         // `malloc`, so a program that calls no `mi_*` function would silently keep libc's
@@ -123,6 +119,16 @@ fn main() {
             _ => {}
         }
     }
+
+    for (name, value) in &defines {
+        build.define(name, *value);
+    }
+    // Cargo passes this to direct dependents as `DEP_MIMALLOC_DEFINES`.
+    let defines: Vec<String> = defines
+        .iter()
+        .map(|(name, value)| format!("{name}={value}"))
+        .collect();
+    println!("cargo:DEFINES={}", defines.join(" "));
 
     build.compile("mimalloc");
 }
