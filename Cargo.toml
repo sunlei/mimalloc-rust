@@ -1,6 +1,8 @@
 [workspace]
 resolver = "3"
-members = ["mimalloc-rust-sys"]
+members = ["mimalloc-rust-sys", "xtask"]
+# Keep bindgen (xtask) out of everyday `cargo build` / `cargo test`.
+default-members = ["mimalloc-rust-sys"]
 
 [workspace.package]
 version = "0.1.0"

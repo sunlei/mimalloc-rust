@@ -1,0 +1,10 @@
+[package]
+name = "xtask"
+description = "Maintenance tasks: regenerate and verify mimalloc bindings"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+bindgen = { version = "0.73", default-features = false, features = ["prettyplease", "runtime"] }
