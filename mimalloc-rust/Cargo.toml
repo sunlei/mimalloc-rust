@@ -7,11 +7,6 @@ rust-version.workspace = true
 publish.workspace = true
 repository.workspace = true
 
-# The library has no unit tests. With `override` on musl, rustc links `libc.a` before the
-# mimalloc archive in this one test binary, which fails with duplicate `malloc` definitions.
-[lib]
-test = false
-
 [features]
 secure = ["mimalloc-rust-sys/secure"]
 debug = ["mimalloc-rust-sys/debug"]

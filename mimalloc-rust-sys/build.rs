@@ -78,8 +78,8 @@ fn main() {
         }
         // A single-pass linker (GNU ld) reaches this archive before std references
         // `malloc`, so a program that calls no `mi_*` function would silently keep libc's
-        // allocator. Link order stays rustc's choice: on musl, a `libc.a` placed before
-        // this archive fails the link with duplicate `malloc` definitions.
+        // allocator. This keeps the object in the link but does not order it; the
+        // `extern crate std` in lib.rs keeps it before musl's `libc.a`.
         build.link_lib_modifier("+whole-archive");
     }
 

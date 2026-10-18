@@ -7,6 +7,13 @@
 #![no_std]
 #![allow(non_camel_case_types, non_upper_case_globals)]
 
+// rustc places a crate before its dependencies on the link line but leaves unrelated
+// crates in load order. Depending on std puts the override archive before the static
+// `libc.a` on musl, which otherwise can come first (for example in the test binary of a
+// `no_std` crate) and fail the link with duplicate `malloc` definitions.
+#[cfg(feature = "override")]
+extern crate std;
+
 /// C `wchar_t`, used by `mi_wcsdup` and `mi_wdupenv_s`.
 ///
 /// Generated bindings would pin the signedness of whichever target ran bindgen.
