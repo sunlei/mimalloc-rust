@@ -3,6 +3,10 @@
 //! The bindings cover the linkable C ABI of `mimalloc.h` and `mimalloc-stats.h`.
 //! Macros and `static inline` helpers (such as `mi_stats_init` and the `*_csize`
 //! variants) are not bound; see `UPSTREAM.md`.
+//!
+//! Build scripts of crates that depend on this crate directly can read the directory of
+//! the matching headers from `DEP_MIMALLOC_INCLUDE_DIR`, for example to compile C code that
+//! includes `mimalloc.h`. Cargo does not pass it to crates further down the graph.
 
 #![no_std]
 #![allow(non_camel_case_types, non_upper_case_globals)]

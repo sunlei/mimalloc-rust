@@ -17,6 +17,11 @@ fn main() {
     );
     println!("cargo:rerun-if-changed=c_src/mimalloc/include");
     println!("cargo:rerun-if-changed=c_src/mimalloc/src");
+    // Cargo passes this to direct dependents as `DEP_MIMALLOC_INCLUDE_DIR`.
+    println!(
+        "cargo:INCLUDE_DIR={}",
+        mimalloc_dir.join("include").display()
+    );
 
     let target_os = cfg("CARGO_CFG_TARGET_OS");
     let target_env = cfg("CARGO_CFG_TARGET_ENV");
