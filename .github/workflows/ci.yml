@@ -56,6 +56,14 @@ jobs:
       - run: cargo test --locked --release
       - name: Upstream C tests
         run: cargo test --locked --release -p upstream-tests
+      # The sample rate defaults to 0, which leaves guarded allocation unexercised; upstream's
+      # CMake tests set it the same way. mimalloc reads it at process start.
+      - name: Upstream C tests (debug)
+        env:
+          MIMALLOC_GUARDED_SAMPLE_RATE: 1024
+        run: cargo test --locked --release -p upstream-tests --features mimalloc-rust-sys/debug
+      - name: Upstream C tests (secure)
+        run: cargo test --locked --release -p upstream-tests --features mimalloc-rust-sys/secure
       - name: Test features
         shell: bash
         run: |

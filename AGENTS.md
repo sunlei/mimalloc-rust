@@ -28,6 +28,8 @@ CI (`.github/workflows/ci.yml`) runs the following; run the parts your change af
 cargo test --locked
 cargo test --locked --release
 cargo test --locked --release -p upstream-tests
+MIMALLOC_GUARDED_SAMPLE_RATE=1024 cargo test --locked --release -p upstream-tests --features mimalloc-rust-sys/debug
+cargo test --locked --release -p upstream-tests --features mimalloc-rust-sys/secure
 # each of: secure debug no_thp local_dynamic_tls secure,debug override override,secure override,local_dynamic_tls override,debug
 cargo test --locked --features mimalloc-rust/<feature>[,mimalloc-rust/<feature>]
 cargo test --locked --release --features mimalloc-rust/override
@@ -41,7 +43,7 @@ cargo +1.99.0 test --locked                         # MSRV
 ```
 
 - The `override` probe (`mimalloc-rust/tests/override_probe.rs`) only discriminates in release builds.
-- `test-api` prints `succeeded: N` and returns the number of failed checks; `test-stress` aborts on corruption. The Cortex-A72 job runs both under qemu as well.
+- `test-api` prints `succeeded: N` and returns the number of failed checks; `test-stress` aborts on corruption. The Cortex-A72 job runs both under qemu as well. With `debug`, guarded sampling only happens when `MIMALLOC_GUARDED_SAMPLE_RATE` is set before the process starts; the `guarded` line of the stress statistics shows whether it did. Keep `--release`: cc compiles mimalloc at `-O0` in dev builds, which is not the code that ships.
 - `xtask` checks are per target: the headers pull in the target's libc headers, so a pass on macOS says nothing about Linux.
 - When judging a CI run, read the logs for the number of tests that passed, not only the job status.
 
