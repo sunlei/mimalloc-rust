@@ -7,6 +7,37 @@
 //! Build scripts of crates that depend on this crate directly can read the directory of
 //! the matching headers from `DEP_MIMALLOC_INCLUDE_DIR`, for example to compile C code that
 //! includes `mimalloc.h`. Cargo does not pass it to crates further down the graph.
+//!
+//! # Using the bindings
+//!
+//! The authoritative contracts are the comments in `c_src/mimalloc/include/mimalloc.h`
+//! at the vendored tag. The rules below are the ones that are easy to get wrong from Rust:
+//!
+//! - Release blocks from `mi_*` functions with `mi_free` or another `mi_*` function, not
+//!   with the C library's `free`, unless the `override` feature has replaced `free`.
+//! - `mi_free_small` and `mi_free_small_nonnull` only accept blocks from `mi_*alloc_small`.
+//! - A `mi_heap_t` can be used and its blocks freed from any thread. `mi_heap_delete`
+//!   moves live blocks to the main heap, while `mi_heap_destroy` frees them, leaving every
+//!   outstanding pointer into that heap dangling.
+//! - A `mi_theap_t` can only allocate on the thread that created it.
+//! - Callbacks and their `arg` registered with `mi_register_deferred_free`,
+//!   `mi_register_output` and `mi_register_error` are process-global and run on whichever
+//!   thread triggers them, so `arg` must be safe to use from every thread. Each callback
+//!   and its `arg` are stored separately, so register each one once, from a single thread,
+//!   during initialization: replacing one while it can run may pair a callback with the
+//!   wrong `arg`. Registering again does not wait for calls in progress, so whatever `arg`
+//!   points to must outlive every call that can still reach it.
+//! - The deferred free callback runs from allocation and collection, and is not re-entered
+//!   on the same thread.
+//! - A registered error callback runs after the message is printed and replaces the
+//!   default handling, which sets `errno` and, with the `debug` or `secure` feature, aborts
+//!   on corrupted metadata (`EFAULT`). If the callback returns, the failing call continues
+//!   on its own error path without that handling.
+//! - Unwinding out of an `extern "C"` callback aborts the process, so a panic in one is
+//!   fatal.
+//! - The `*_stats_get` functions return `false` unless the `size` and `version` fields of the
+//!   destination already match, which the unbound `mi_stats_init` would arrange: zero a
+//!   `mi_stats_t`, then set `size` to its size and `version` to [`MI_STAT_VERSION`].
 
 #![no_std]
 #![allow(non_camel_case_types, non_upper_case_globals)]
