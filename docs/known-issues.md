@@ -45,3 +45,24 @@ A build script can only add link arguments for its own package, so there is no w
 **Why `debug` keeps the slow path:** the `debug` feature builds with `MI_DEBUG=2` and without `NDEBUG`, which enables `MI_GUARDED` (`types.h`). With guarded sampling and `MIMALLOC_GUARDED_PRECISE=1`, mimalloc places a sampled object right before its guard page without rounding its size, so `mi_malloc(17)` returned 64 of 64 blocks that were not 16-byte aligned in a probe. `MiMalloc` therefore compares the alignment against `mimalloc_rust_sys::MI_MALLOC_ALIGN` instead of 16. It is 1 when the sys crate's build script enables `MI_GUARDED`, however the `debug` feature was enabled, so `MiMalloc` then uses the aligned functions for every alignment above 1. In that configuration a test binary using `MiMalloc` also aborted on mimalloc's own `_mi_memcpy_aligned` assertion during start-up, whether or not `MiMalloc` used the `mi_malloc` path.
 
 **If you hit it:** with `debug`, pick allocation sizes with power-of-two size classes when measuring performance, or measure without `debug`.
+
+## GCC warns about a write to address zero in `_mi_theap_malloc_guarded`
+
+**Status:** a false positive in upstream code; nothing to change.
+
+**Targets:** Linux targets, whose C compiler is GCC, in optimized (release) builds. Clang on macOS does not report it.
+
+**Symptom:** the build of `mimalloc-rust-sys` prints:
+
+```
+include/mimalloc/atomic.h:54:35: warning: '__atomic_fetch_or_8' writing 8 bytes into a region of size 0 overflows the destination [-Wstringop-overflow=]
+...
+In function '_mi_theap_malloc_guarded':
+cc1: note: destination object is likely at address zero
+```
+
+**Cause:** `mi_block_ptr_set_guarded` (`src/sample-guarded.c`) looks up the page of a block with `_mi_ptr_page` and sets a flag on it with an atomic `or`. After inlining, GCC sees that the page-map lookup can return NULL for an address mimalloc does not manage, and warns about the write through that NULL page. The block passed in was just allocated by `_mi_malloc_generic_no_sample` and checked for NULL, so it lies in a mimalloc page and the lookup finds that page.
+
+Without the `debug` feature the function is compiled but never called: its only caller, in `src/sample-profile.c`, is inside `#if MI_GUARDED` (the other one, in `src/alloc-aligned.c`, is inside `#if 0`).
+
+**If you hit it:** ignore it. Report it if the warning names a different function.
