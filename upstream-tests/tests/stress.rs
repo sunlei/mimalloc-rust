@@ -12,7 +12,8 @@ unsafe extern "C" {
 
 // Upstream's release defaults (threads, load per thread in percent, iterations). Passed
 // explicitly because the test picks lighter ones whenever `MI_GUARDED` is defined, and
-// the build script always defines it.
+// the build script always defines it. Without `NDEBUG` (see build.rs) the test otherwise
+// runs its debug variant: a minimal arena reserve and periodic arena dumps.
 const ARGS: [&CStr; 4] = [c"test-stress", c"32", c"50", c"50"];
 
 fn main() -> ExitCode {

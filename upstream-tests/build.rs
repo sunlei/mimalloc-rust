@@ -26,6 +26,11 @@ fn main() {
             .define("main", format!("mi_test_{test}_main").as_str());
         for define in defines.split_whitespace() {
             let (name, value) = define.split_once('=').expect("NAME=VALUE");
+            // `NDEBUG` would turn the tests' `assert` checks into no-ops. The library keeps
+            // it, and the headers follow the explicit `MI_DEBUG` and `MI_GUARDED` either way.
+            if name == "NDEBUG" {
+                continue;
+            }
             build.define(name, value);
         }
         build.compile(&format!("upstream_test_{test}"));

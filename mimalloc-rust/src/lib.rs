@@ -66,8 +66,8 @@ unsafe impl GlobalAlloc for MiMalloc {
     }
 
     // Not `mi_free_size_aligned`: it measured no faster in the bench crate (same thread and
-    // cross-thread, Apple M1 Max), and in release builds a wrong `layout` would then corrupt
-    // the heap silently instead of being ignored.
+    // cross-thread, Apple M1 Max), and in release builds a wrong `layout`, already undefined
+    // behavior, would then corrupt the heap silently instead of being ignored.
     #[inline]
     unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
         // SAFETY: the caller guarantees `ptr` is a live block from this allocator;
