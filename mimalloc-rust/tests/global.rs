@@ -1,6 +1,7 @@
 //! Contract tests for `MiMalloc`, which is also this test binary's global allocator.
 
 use std::alloc::{GlobalAlloc, Layout};
+use std::collections::HashSet;
 use std::{array, ptr, slice, thread};
 
 use mimalloc_rust::MiMalloc;
@@ -62,6 +63,44 @@ fn alloc_zeroed_clears_the_requested_range() {
         let bytes = unsafe { slice::from_raw_parts(block, layout.size()) };
         assert!(bytes.iter().all(|&b| b == 0));
         unsafe { MiMalloc.dealloc(block, layout) };
+    }
+}
+
+// mimalloc puts a freed block on its page's `local_free` list, so a single free followed by
+// an allocation usually returns a different block. Freeing many dirty blocks first makes the
+// zeroed allocations reuse some of them, which the test asserts.
+#[test]
+fn alloc_zeroed_clears_reused_dirty_blocks() {
+    const LIVE: usize = 4096;
+    for size in [8, 24, 224, 640, 4640] {
+        let layout = layout(size, 8);
+        let dirty: Vec<*mut u8> = (0..LIVE)
+            .map(|_| unsafe { MiMalloc.alloc(layout) })
+            .collect();
+        for &block in &dirty {
+            assert!(!block.is_null(), "{layout:?}");
+            unsafe { block.write_bytes(0xFF, size) };
+        }
+        for &block in &dirty {
+            unsafe { MiMalloc.dealloc(block, layout) };
+        }
+
+        let zeroed: Vec<*mut u8> = (0..LIVE)
+            .map(|_| unsafe { MiMalloc.alloc_zeroed(layout) })
+            .collect();
+        for &block in &zeroed {
+            assert!(!block.is_null(), "{layout:?}");
+            let bytes = unsafe { slice::from_raw_parts(block, size) };
+            assert!(bytes.iter().all(|&b| b == 0), "{layout:?}");
+        }
+        let dirty: HashSet<*mut u8> = dirty.into_iter().collect();
+        assert!(
+            zeroed.iter().any(|block| dirty.contains(block)),
+            "no dirty block was reused for {layout:?}"
+        );
+        for &block in &zeroed {
+            unsafe { MiMalloc.dealloc(block, layout) };
+        }
     }
 }
 
