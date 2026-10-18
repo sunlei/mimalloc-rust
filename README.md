@@ -71,7 +71,7 @@ cargo test                            # mimalloc-rust and mimalloc-rust-sys
 cargo run -p xtask -- bindgen         # regenerate mimalloc-rust-sys/src/bindings.rs
 cargo run -p xtask -- bindgen --check # fail if the committed bindings differ for this target
 cargo run -p xtask -- check-symbols   # fail if a bound function is not defined in the library
-cargo bench --bench alloc             # compare mi_malloc, mi_malloc_aligned and MiMalloc
+cargo bench -p bench                  # compare mi_malloc, mi_malloc_aligned and MiMalloc
 ```
 
 The xtask needs libclang. Run the checks natively on each target, because the headers include the target's libc headers. On musl hosts, build the xtask with `RUSTFLAGS="-C target-feature=-crt-static"`: a statically linked musl binary cannot `dlopen` libclang.

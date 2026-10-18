@@ -66,4 +66,4 @@ Not bound:
 3. Run `cargo run -p xtask -- bindgen` and review the diff, including newly declared functions.
 4. Run `cargo run -p xtask -- check-symbols`; exclude any declaration without a definition and record it above.
 5. Run the full test matrix (CI) on every supported target, including the Cortex-A72 job.
-6. If the release contains upstream commit `a7875866` (the relaxed natural-alignment check), run `cargo bench --bench alloc`: `mi_malloc_aligned` should then match `mi_malloc` at 48, 224 and 640 bytes. Update the aligned slow path entry in `docs/known-issues.md` accordingly; `MiMalloc` keeps its `mi_malloc` path either way, which skips the aligned entry's extra checks.
+6. If the release contains upstream commit `a7875866` (the relaxed natural-alignment check), run `cargo bench -p bench`: `mi_malloc_aligned` should then match `mi_malloc` at 48, 224 and 640 bytes. Update the aligned slow path entry in `docs/known-issues.md` accordingly; `MiMalloc` keeps its `mi_malloc` path either way, which skips the aligned entry's extra checks.
