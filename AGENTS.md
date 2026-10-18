@@ -11,7 +11,7 @@ Guidance for coding agents working in this repository. The [README](README.md) c
 | `bench/` | Criterion benchmark of the allocation entry points |
 | `dlopen-plugin/` | Test-only crate: a `cdylib` using `MiMalloc` with `local_dynamic_tls`, which its test loads with `dlopen` after filling glibc's static TLS surplus |
 | `downstream-c/` | Test-only crate: a C shared library built against `DEP_MIMALLOC_INCLUDE_DIR`, checking `override` across the library boundary |
-| `upstream-tests/` | Test-only crate: compiles upstream's `test/test-api.c` and `test/test-stress.c` with `DEP_MIMALLOC_DEFINES` and runs each as a `harness = false` test |
+| `upstream-tests/` | Test-only crate: compiles the upstream C tests that `CMakeLists.txt` registers (`api`, `api-fill`, `stress`, `stress-heaps`, `stress-subprocs`) with `DEP_MIMALLOC_DEFINES` and runs each as a `harness = false` test |
 | `xtask/` | `bindgen`, `bindgen --check` and `check-symbols` |
 
 `default-members` holds only the two library crates. Keep it that way: `bench` would make every `cargo test` build criterion, `xtask` needs libclang, `downstream-c` and `dlopen-plugin` enable `override` and `local_dynamic_tls`, which Cargo would unify into the other members' tests, and `upstream-tests` adds a multi-second stress run.
@@ -45,7 +45,7 @@ cargo +1.99.0 test --locked                         # MSRV
 ```
 
 - The `override` probe (`mimalloc-rust/tests/override_probe.rs`) only discriminates in release builds.
-- `test-api` prints `succeeded: N` and returns the number of failed checks; `test-stress` aborts on corruption. The Cortex-A72 job runs both under qemu as well. With `debug`, guarded sampling only happens when `MIMALLOC_GUARDED_SAMPLE_RATE` is set before the process starts; the `guarded` line of the stress statistics shows whether it did. Keep `--release`: cc compiles mimalloc at `-O0` in dev builds, which is not the code that ships.
+- `test-api` and `test-api-fill` print `succeeded: N` and return the number of failed checks; the stress tests abort on corruption. The Cortex-A72 job runs them all under qemu as well. With `debug`, guarded sampling only happens when `MIMALLOC_GUARDED_SAMPLE_RATE` is set before the process starts; the `guarded` line of the stress statistics shows whether it did. Keep `--release`: cc compiles mimalloc at `-O0` in dev builds, which is not the code that ships.
 - `xtask` checks are per target: the headers pull in the target's libc headers, so a pass on macOS says nothing about Linux.
 - When judging a CI run, read the logs for the number of tests that passed, not only the job status.
 

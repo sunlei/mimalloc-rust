@@ -18,7 +18,19 @@ name = "api"
 harness = false
 
 [[test]]
+name = "api_fill"
+harness = false
+
+[[test]]
 name = "stress"
+harness = false
+
+[[test]]
+name = "stress_heaps"
+harness = false
+
+[[test]]
+name = "stress_subprocs"
 harness = false
 
 [lints]
