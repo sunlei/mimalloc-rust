@@ -1,5 +1,5 @@
 //! With `override`, the C allocation functions of the executable are mimalloc's, so
-//! allocations made by C code, by libc itself and by `std::alloc::System` all come from it.
+//! allocations made by C code, inside libc and by `std::alloc::System` all come from it.
 #![cfg(feature = "override")]
 
 use core::ffi::{c_char, c_int, c_void};
@@ -14,7 +14,7 @@ unsafe extern "C" {
     fn realloc(ptr: *mut c_void, size: usize) -> *mut c_void;
     fn posix_memalign(out: *mut *mut c_void, alignment: usize, size: usize) -> c_int;
     fn free(ptr: *mut c_void);
-    fn strdup(s: *const c_char) -> *mut c_char;
+    fn asprintf(out: *mut *mut c_char, format: *const c_char, ...) -> c_int;
 }
 
 // `black_box` keeps the optimizer from reasoning about known malloc/free pairs.
@@ -44,12 +44,15 @@ fn c_allocation_functions_return_mimalloc_blocks() {
     }
 }
 
+// mimalloc replaces `strdup` and friends directly, so this uses `asprintf`, which libc
+// implements itself on top of `malloc`.
 #[test]
 fn allocations_inside_libc_come_from_mimalloc() {
     unsafe {
-        let copy = strdup(c"allocated by libc".as_ptr());
-        assert!(from_mimalloc(copy));
-        free(copy.cast());
+        let mut text = core::ptr::null_mut();
+        assert!(asprintf(&mut text, c"%s %d".as_ptr(), c"libc".as_ptr(), 42) > 0);
+        assert!(from_mimalloc(text));
+        free(text.cast());
     }
 }
 
