@@ -27,3 +27,20 @@ A build script can only add link arguments for its own package, so there is no w
 **Residual risk:** the fix relies on rustc ordering crates before their dependencies on the link line. Single-pass linkers need that order, but rustc does not document it as a guarantee. A link-order problem has only been observed as the link error above; this does not prove that every possible link configuration fails loudly.
 
 **If you hit it:** build without `override` on that target, and report the crate layout that produced the failing link line (`cargo rustc ... -- --print link-args` shows the order).
+
+## `MiMalloc` takes a slow path for sizes whose size class is not a power of two
+
+**Status:** open; a fix is planned but deferred (see below).
+
+**Targets:** all, through `MiMalloc::alloc`, `alloc_zeroed` and `realloc`.
+
+**Symptom:** with `MiMalloc` as the global allocator, allocations whose mimalloc size class is not a power of two (for example 48, 224 or 640 bytes with alignment 8) are slower and use more memory than the same requests made through `mi_malloc`. `cargo bench --bench alloc` reproduces it. On an Apple M1 Max, one allocate-then-free pair cost about 3.5 ns more (about 68%) at 48, 224 and 640 bytes, and `mi_usable_size` reported 64, 256 and 768 bytes for these blocks instead of 48, 224 and 640. Sizes whose size class is a power of two (8, 24, 64, 256, 1024) showed no consistent difference.
+
+**Cause:** `MiMalloc` calls the `mi_*_aligned` functions for every layout. In `alloc-aligned.c`, their inline fast path only takes a block from the `free` list of the page for the requested size class. `mi_free` pushes blocks freed by the owning thread onto the page's `local_free` list, and only the regular (non-aligned) generic allocation path moves `local_free` back to `free`. When the fast path finds no block, `mi_theap_malloc_zero_aligned_at_generic` uses the regular path only if `mi_malloc_is_naturally_aligned` holds, which requires the size class to be a power of two up to 4 KiB or a multiple of 4 KiB. Otherwise it over-allocates `size + alignment - 1` bytes, which lands in a larger size class. Judging from the code (not observed directly), the page for the requested size class is then never refilled, so every later request of that size goes through two non-inlined functions and the over-allocation.
+
+**Planned fix:** call `mi_malloc`, `mi_zalloc` and `mi_realloc` when `align <= 16 && align <= size`, the same condition std's `System` uses on Unix, and keep the aligned functions otherwise. Two preconditions must be verified first:
+
+- In the default configuration (`MI_ALIGN2W` in `page-queue.c`), every block of a size class above 8 bytes must be 16-byte aligned, not just the first block of a page. A test that keeps many blocks of each size alive and checks each one should guard this.
+- The `debug` feature builds with `MI_DEBUG=2` and without `NDEBUG`, which enables `MI_GUARDED` (`types.h`). It is unverified whether guarded sampling weakens the alignment `mi_malloc` returns; until it is checked, the fast path should stay off with `debug`.
+
+**If you hit it:** no workaround inside this crate yet. Pick allocation sizes with power-of-two size classes, or call `mimalloc_rust_sys::mi_malloc` directly for hot paths whose alignment you control.
