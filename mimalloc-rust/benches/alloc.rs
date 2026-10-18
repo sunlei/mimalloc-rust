@@ -12,7 +12,10 @@ use mimalloc_rust::MiMalloc;
 use mimalloc_rust_sys::{mi_free, mi_malloc, mi_malloc_aligned};
 
 const BATCH: usize = 64;
-const SIZES: [usize; 6] = [8, 24, 64, 256, 1024, 4096];
+// 48, 224 and 640 have size classes that are not powers of two, where the aligned entry
+// point falls back to over-allocation (see docs/known-issues.md); the other sizes have
+// power-of-two size classes.
+const SIZES: [usize; 9] = [8, 24, 48, 64, 224, 256, 640, 1024, 4096];
 // `mi_malloc` already guarantees this alignment, so it is the case where `MiMalloc` could
 // skip the aligned entry point.
 const ALIGN: usize = 8;
