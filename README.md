@@ -46,7 +46,7 @@ No feature is needed for a typical program: the default build mirrors upstream's
 
 ## Runtime options
 
-mimalloc reads its options from `MIMALLOC_*` environment variables, listed in upstream's [Environment Options](https://github.com/microsoft/mimalloc#environment-options), or takes them from `mi_option_set`, which needs a direct dependency on `mimalloc-rust-sys`. Upstream's defaults are general-purpose; change one only to address a measured problem. Some options are read only when the process or a thread's heap is initialized, such as `guarded_sample_rate` with `debug`, so a call made after allocation has started may not affect them; set those through the environment.
+mimalloc reads its options from `MIMALLOC_*` environment variables, listed in upstream's [Environment Options](https://github.com/microsoft/mimalloc#environment-options), or takes them from `mi_option_set`, which needs a direct dependency on `mimalloc-rust-sys` and may only be called while no other thread can allocate (see the `mimalloc-rust-sys` docs). Upstream's defaults are general-purpose; change one only to address a measured problem. Some options are read only when the process or a thread's heap is initialized, such as `guarded_sample_rate` with `debug`, so a call made after allocation has started may not affect them; set those through the environment.
 
 ## Overriding malloc
 
