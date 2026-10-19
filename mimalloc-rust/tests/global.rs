@@ -15,6 +15,14 @@ fn is_mimalloc_block<T: ?Sized>(value: &T) -> bool {
     unsafe { mi_any_heap_contains(ptr::from_ref(value).cast()) }
 }
 
+// Sizes around the 8/16-byte boundaries and the size classes that are not powers of two,
+// where `MiMalloc` switches between the `mi_malloc` and the aligned functions.
+const SIZES: [usize; 35] = [
+    1, 2, 3, 4, 5, 7, 8, 9, 12, 15, 16, 17, 23, 24, 25, 31, 32, 33, 40, 48, 63, 64, 65, 96, 160,
+    224, 320, 640, 1000, 1024, 1025, 2240, 4096, 4640, 70_000,
+];
+const ALIGNS: [usize; 8] = [1, 2, 4, 8, 16, 32, 64, 4096];
+
 fn pattern(index: usize) -> u8 {
     (index * 31 % 251) as u8
 }
@@ -46,6 +54,27 @@ fn alloc_honors_size_and_alignment() {
         );
         unsafe { block.write_bytes(0xA5, layout.size()) };
         unsafe { MiMalloc.dealloc(block, layout) };
+    }
+}
+
+#[test]
+fn every_size_and_alignment_is_honored_by_alloc_and_alloc_zeroed() {
+    for align in ALIGNS {
+        for size in SIZES {
+            let layout = layout(size, align);
+            let block = unsafe { MiMalloc.alloc(layout) };
+            assert!(!block.is_null(), "{layout:?}");
+            assert_eq!(block.addr() % align, 0, "{layout:?}");
+            unsafe { block.write_bytes(0xA5, size) };
+            unsafe { MiMalloc.dealloc(block, layout) };
+
+            let block = unsafe { MiMalloc.alloc_zeroed(layout) };
+            assert!(!block.is_null(), "{layout:?}");
+            assert_eq!(block.addr() % align, 0, "{layout:?}");
+            let bytes = unsafe { slice::from_raw_parts(block, size) };
+            assert!(bytes.iter().all(|&b| b == 0), "{layout:?}");
+            unsafe { MiMalloc.dealloc(block, layout) };
+        }
     }
 }
 
@@ -178,9 +207,8 @@ fn over_aligned_small_blocks_can_be_freed() {
 // Crosses the boundary between `mi_realloc` and `mi_realloc_aligned` in both directions.
 #[test]
 fn realloc_keeps_alignment_and_contents_across_entry_points() {
-    const SIZES: [usize; 12] = [1, 7, 8, 9, 16, 17, 48, 224, 1024, 1025, 4640, 70_000];
     let expected: Vec<u8> = (0..70_000).map(pattern).collect();
-    for align in [1, 2, 4, 8, 16, 32, 64, 4096] {
+    for align in ALIGNS {
         for from in SIZES {
             for to in SIZES {
                 let block = unsafe { MiMalloc.alloc(layout(from, align)) };
