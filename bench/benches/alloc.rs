@@ -19,7 +19,9 @@ const BATCH: usize = 64;
 // power-of-two size classes.
 const SIZES: [usize; 9] = [8, 24, 48, 64, 224, 256, 640, 1024, 4096];
 // `mi_malloc` already guarantees this alignment, so `MiMalloc` takes its `mi_malloc` path
-// unless built with `debug`.
+// unless built with `debug`. The `black_box`ed layout keeps `MiMalloc`'s alignment check from
+// being folded at compile time, so it runs a few instructions more per allocation than
+// `mi_malloc` here, unlike with the constant layouts of most callers.
 const ALIGN: usize = 8;
 
 fn malloc(layout: Layout) -> *mut u8 {
