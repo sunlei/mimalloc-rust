@@ -40,7 +40,7 @@ checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 
 [[package]]
 name = "bench"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "criterion",
  "mimalloc-rust",
@@ -206,7 +206,7 @@ checksum = "460fbee9c2c2f33933d720630a6a0bac33ba7053db5344fac858d4b8952d77d5"
 
 [[package]]
 name = "dlopen-plugin"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "cc",
  "mimalloc-rust",
@@ -214,7 +214,7 @@ dependencies = [
 
 [[package]]
 name = "downstream-c"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "cc",
  "mimalloc-rust-sys",
@@ -288,7 +288,7 @@ checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 
 [[package]]
 name = "mimalloc-rust"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "mimalloc-rust-sys",
  "serde_json",
@@ -296,7 +296,7 @@ dependencies = [
 
 [[package]]
 name = "mimalloc-rust-sys"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "cc",
 ]
@@ -503,7 +503,7 @@ checksum = "a2c754d6c33795a1c324727428e5a7dedb5b06195f9890bdbcba760d3e246563"
 
 [[package]]
 name = "upstream-tests"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "cc",
  "mimalloc-rust-sys",
@@ -567,7 +567,7 @@ dependencies = [
 
 [[package]]
 name = "xtask"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "bindgen",
  "serde_json",
