@@ -95,6 +95,23 @@ fn bench_alloc_free(c: &mut Criterion) {
     group.finish();
 }
 
+// One block freed right after it is allocated, as a short-lived `Box` is. `alloc_free_batch`
+// repeats each call 64 times in a row, which hides the cost of a free followed by an
+// allocation from the same page (see the store-forwarding entry in docs/known-issues.md).
+fn bench_alloc_then_free(c: &mut Criterion) {
+    let mut group = c.benchmark_group("alloc_then_free");
+    for size in [8, 24, 48, 64] {
+        let layout = Layout::from_size_align(size, ALIGN).expect("valid layout");
+        group.bench_function(BenchmarkId::new("MiMalloc", size), |b| {
+            b.iter(|| {
+                let block = unsafe { MiMalloc.alloc(black_box(layout)) };
+                unsafe { MiMalloc.dealloc(black_box(block), layout) };
+            });
+        });
+    }
+    group.finish();
+}
+
 // Large enough that the frees outweigh the two channel hand-offs of each iteration.
 const CROSS_THREAD_BATCH: usize = 4096;
 
@@ -148,5 +165,10 @@ fn bench_cross_thread_free(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_alloc_free, bench_cross_thread_free);
+criterion_group!(
+    benches,
+    bench_alloc_free,
+    bench_alloc_then_free,
+    bench_cross_thread_free
+);
 criterion_main!(benches);

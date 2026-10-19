@@ -46,6 +46,22 @@ A build script can only add link arguments for its own package, so there is no w
 
 **If you hit it:** with `debug`, pick allocation sizes with power-of-two size classes when measuring performance, or measure without `debug`.
 
+## On aarch64, a free followed by an allocation stalls on store-to-load forwarding
+
+**Status:** fixed by compiler flags in `build.rs`, except with GCC older than 14 (see below).
+
+**Targets:** all aarch64 targets.
+
+**Symptom:** freeing a small block and then allocating one of the same size class, as a short-lived `Box` does, costs a few nanoseconds more than with mimalloc v3.3.2. `cargo bench --bench alloc` reproduces it in `alloc_then_free`; `alloc_free_batch` hides it. Before the fix, one allocate-then-free pair took 6.7–6.9 ns on Neoverse-V3 (Graviton5) with both Clang 19.1.7 and GCC 14.2, and 6.7–7.0 ns on an Apple M1 Max; with the fix it takes 4.1–4.5 ns and 5.1–5.4 ns. In a downstream application on Neoverse-V3, constructing and dropping one small boxed object went from 17 ns with v3.3.2 to 22–23 ns with v3.5.3, and back to 17 ns with the fix.
+
+**Cause:** in v3.5.3, `free` (offset 0x10), `xused` (0x18, 64 bits wide) and `local_free` (0x20) are adjacent fields of `mi_page_t`. The inline fast path of `mi_malloc` reads and writes `free` and `xused`, and `mi_free` reads and writes `xused` and `local_free`. Clang and GCC merge each pair into one 16-byte `ldp`/`stp`, so a call loads 16 bytes that the previous call stored only half of. Store-to-load forwarding cannot serve such a load, so it waits until the store has reached the cache. In v3.3.2 the used count was 16 bits wide and accessed with `ldrh`/`strh` at its own address, so each load matched an earlier store exactly. On Neoverse-V3, `MI_FREE_USE_PAGEMAP=1` (page lookup through the page map instead of the aligned page meta data) kept the pairing and did not help, and neither did `MI_PROFILE=0` or `MI_STATS=0`.
+
+**Fix:** `build.rs` keeps the compiler from pairing loads and stores in the mimalloc library on aarch64: `-mllvm -aarch64-enable-ldst-opt=false` for Clang, and `--param=aarch64-ldp-policy=never --param=aarch64-stp-policy=never` for GCC when it accepts them. This applies to the whole library. On Neoverse-V3, `alloc_free_batch` changed by −3% to +11% depending on the size and compiler, and `cross_thread_free` by −1.5% to +1.4%. Recorded as an intentional difference in `mimalloc-rust-sys/UPSTREAM.md`.
+
+**Upstream status:** not reported yet. Reordering or narrowing the fields in `mi_page_t` would remove the need for the flags.
+
+**If you hit it:** with GCC 13 or older, which does not accept the parameters, build the library with Clang (`CC=clang`) or a newer GCC. To check a build, disassemble `mi_malloc` and `mi_free`: the accesses at offsets 0x10, 0x18 and 0x20 of the page should be single `ldr`/`str` instructions, not `ldp`/`stp`.
+
 ## GCC warns about a write to address zero in `_mi_theap_malloc_guarded`
 
 **Status:** a false positive in upstream code; nothing to change.
