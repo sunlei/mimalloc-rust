@@ -34,13 +34,19 @@ Only one copy of mimalloc may be linked: the sys crate declares `links = "mimall
 
 ## Features
 
-| Feature | Effect |
-|---|---|
-| `secure` | Upstream secure mode (`MI_SECURE=4`): guard pages, encrypted free lists, randomized allocation |
-| `debug` | mimalloc internal invariant checks (`MI_DEBUG=2`), independent of the Cargo profile. `MiMalloc` then uses the aligned allocation functions for every alignment above 1, which are slower for some sizes; see [docs/known-issues.md](docs/known-issues.md) |
-| `no_thp` | Defaults mimalloc's `allow_thp` option to off on Linux/Android; it can still be re-enabled at runtime. No effect elsewhere |
-| `local_dynamic_tls` | Local-dynamic TLS model, needed when the final artifact is loaded with `dlopen` (ELF): with the default initial-exec model, glibc refuses to load it ("cannot allocate memory in static TLS block") once other libraries have used up the static TLS reserved for `dlopen`. musl targets always use it |
-| `override` | Replaces the C allocation functions (`malloc`, `free`, `posix_memalign`, ...) of the executable, so C code, allocations inside libc (checked with `asprintf`) and `std::alloc::System` also use mimalloc. See [Overriding malloc](#overriding-malloc) |
+No feature is needed for a typical program: the default build mirrors upstream's release configuration (see [`mimalloc-rust-sys/UPSTREAM.md`](mimalloc-rust-sys/UPSTREAM.md)). Enable one only when its condition applies.
+
+| Feature | When to enable | Effect |
+|---|---|---|
+| `local_dynamic_tls` | The final artifact is loaded with `dlopen` (ELF), such as a Python extension module or a plugin | Local-dynamic TLS model. With the default initial-exec model, glibc refuses to load the artifact ("cannot allocate memory in static TLS block") once other libraries have used up the static TLS reserved for `dlopen`. musl targets always use it |
+| `override` | An executable whose C code or libc should allocate from mimalloc too | Replaces the C allocation functions (`malloc`, `free`, `posix_memalign`, ...) of the executable, so C code, allocations inside libc (checked with `asprintf`) and `std::alloc::System` also use mimalloc. See [Overriding malloc](#overriding-malloc) |
+| `no_thp` | Transparent huge pages cost more memory or latency than they save in your deployment | Defaults mimalloc's `allow_thp` option to off on Linux/Android; it can still be re-enabled at runtime. No effect elsewhere. `MIMALLOC_ALLOW_THP=0` does the same without rebuilding |
+| `secure` | Hardening against heap exploits matters more than allocation speed | Upstream secure mode (`MI_SECURE=4`): guard pages, encrypted free lists, randomized allocation |
+| `debug` | Investigating heap corruption or a suspected mimalloc bug | mimalloc internal invariant checks (`MI_DEBUG=2`), independent of the Cargo profile. `MiMalloc` then uses the aligned allocation functions for every alignment above 1, which are slower for some sizes; see [docs/known-issues.md](docs/known-issues.md) |
+
+## Runtime options
+
+mimalloc reads its options from `MIMALLOC_*` environment variables, listed in upstream's [Environment Options](https://github.com/microsoft/mimalloc#environment-options), or takes them from `mi_option_set`, which needs a direct dependency on `mimalloc-rust-sys`. Upstream's defaults are general-purpose; change one only to address a measured problem. Some options are read only when the process or a thread's heap is initialized, such as `guarded_sample_rate` with `debug`, so a call made after allocation has started may not affect them; set those through the environment.
 
 ## Overriding malloc
 
