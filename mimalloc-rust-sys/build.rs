@@ -114,9 +114,21 @@ fn main() {
                 }
             }
             // Upstream's default `-march=armv8.1-a` would raise the CPU baseline above
-            // Rust's ARMv8.0 Linux targets; outline atomics still pick LSE at runtime.
+            // Rust's ARMv8.0 Linux targets (it also enables CRC and RDMA), so LSE atomics are
+            // compiled inline only when the Rust target has them too, as with
+            // `-C target-cpu=native`, which is faster than outline atomics (measurements in
+            // UPSTREAM.md). Otherwise outline atomics still pick LSE at runtime.
             "linux" => {
-                build.flag("-moutline-atomics");
+                // Cargo leaves this unset when the target has no features at all.
+                if env::var("CARGO_CFG_TARGET_FEATURE")
+                    .unwrap_or_default()
+                    .split(',')
+                    .any(|feature| feature == "lse")
+                {
+                    build.flag("-march=armv8-a+lse");
+                } else {
+                    build.flag("-moutline-atomics");
+                }
             }
             _ => {}
         }

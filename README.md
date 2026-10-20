@@ -30,6 +30,8 @@ mimalloc is compiled with the optimization level of the Cargo profile. To keep a
 opt-level = 3
 ```
 
+On Linux aarch64, mimalloc's atomics are compiled inline only when the Rust target has LSE, for example with `-C target-cpu=native`; otherwise they go through outline helpers that pick LSE at runtime. See [`UPSTREAM.md`](mimalloc-rust-sys/UPSTREAM.md#intentional-differences).
+
 Only one copy of mimalloc may be linked: the sys crate declares `links = "mimalloc"`, so Cargo rejects any other crate in the dependency graph that declares the same `links` value.
 
 ## Features

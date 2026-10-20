@@ -72,6 +72,12 @@ jobs:
           done
       # The override probe only discriminates in release; see tests/override_probe.rs.
       - run: cargo test --locked --release --features mimalloc-rust/override
+      # build.rs compiles LSE atomics inline when the Rust target has them; the runner's CPU does.
+      - name: Test with LSE in the target features
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        env:
+          RUSTFLAGS: -C target-feature=+lse
+        run: cargo test --locked --release
       # Static musl executables cannot load the shared library this test builds.
       - name: Override across a C shared library
         if: ${{ !matrix.container }}
@@ -115,7 +121,7 @@ jobs:
           git checkout -q FETCH_HEAD
           git submodule update -q --init --recursive --depth 1
       # Only the release run: the dev build differs in optimization level alone, which does
-      # not decide whether LSE instructions appear (`-moutline-atomics` does).
+      # not decide whether LSE instructions appear (the Rust target features do, see build.rs).
       - run: cargo test --locked --release --target ${{ matrix.target }}
       - name: Upstream C tests
         run: cargo test --locked --release --target ${{ matrix.target }} -p upstream-tests
