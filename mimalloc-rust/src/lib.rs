@@ -36,6 +36,10 @@ const fn mi_malloc_aligns(size: usize, align: usize) -> bool {
     align <= ffi::MI_MALLOC_ALIGN && align <= size
 }
 
+// `mi_wmalloc_small` for small sizes (as `mi_malloc_csize` in `mimalloc.h`) was measured
+// instead of `mi_malloc`: with runtime layouts it was slower on Neoverse-V3, and the
+// mixed-size case slower on i5-13400 P-cores, over shuffled code layouts (bench `global`).
+//
 // SAFETY: `mi_malloc`, `mi_zalloc` and `mi_realloc` are only used when `mi_malloc_aligns`
 // holds, and otherwise the `mi_*_aligned` functions. Both return null or a block of at least
 // `size` bytes aligned to `align`, and `mi_free` releases either from any thread.
@@ -72,6 +76,9 @@ unsafe impl GlobalAlloc for MiMalloc {
     // With `MI_DEBUG` it is used for its checks instead: mimalloc then reports, and still
     // frees, a block whose `layout.size()` exceeds its usable size, unless
     // `layout.align() > layout.size()` or the block is guarded.
+    // Nor `mi_free_small_nonnull` for small layouts (as `mi_free_csize_aligned_nonnull` in
+    // `mimalloc.h`): over shuffled code layouts it was not measurably faster on Neoverse-V3,
+    // and faster only in the mixed-size case on i5-13400 P-cores (bench `global`).
     #[inline]
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         if ffi::MI_DEBUG {

@@ -17,5 +17,9 @@ criterion = { version = "0.8.2", default-features = false, features = ["cargo_be
 name = "alloc"
 harness = false
 
+[[bench]]
+name = "global"
+harness = false
+
 [lints]
 workspace = true
