@@ -58,6 +58,11 @@
 #[cfg(feature = "override")]
 extern crate std;
 
+/// Whether the library was built with mimalloc's internal checks (`MI_DEBUG`), which the
+/// `debug` feature enables. Features are unified across the dependency graph, so dependents
+/// should read this instead of their own `debug` feature.
+pub const MI_DEBUG: bool = cfg!(mi_debug);
+
 /// Whether the library was built with `MI_GUARDED`, which the `debug` feature enables.
 ///
 /// With guarded sampling and the `guarded_precise` option enabled at run time, `mi_malloc`

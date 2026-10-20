@@ -69,11 +69,19 @@ unsafe impl GlobalAlloc for MiMalloc {
     // on Intel i5-13400 P-cores, mixed on its E-cores and faster only on Neoverse-V3
     // cross-thread, and in release builds a wrong `layout`, already undefined behavior, would
     // then corrupt the heap silently instead of being ignored.
+    // With `MI_DEBUG` it is used for its checks instead: mimalloc then reports, and still
+    // frees, a block whose `layout.size()` exceeds its usable size, unless
+    // `layout.align() > layout.size()` or the block is guarded.
     #[inline]
-    unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
-        // SAFETY: the caller guarantees `ptr` is a live block from this allocator;
-        // `mi_free` needs no size or alignment.
-        unsafe { ffi::mi_free(ptr.cast()) }
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        if ffi::MI_DEBUG {
+            // SAFETY: the caller guarantees `ptr` is a live block allocated with `layout`.
+            unsafe { ffi::mi_free_size_aligned(ptr.cast(), layout.size(), layout.align()) }
+        } else {
+            // SAFETY: the caller guarantees `ptr` is a live block from this allocator;
+            // `mi_free` needs no size or alignment.
+            unsafe { ffi::mi_free(ptr.cast()) }
+        }
     }
 
     #[inline]

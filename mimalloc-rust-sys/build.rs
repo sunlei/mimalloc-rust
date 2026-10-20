@@ -40,9 +40,11 @@ fn main() {
     // (types.h), and cc never defines `NDEBUG`.
     // `types.h` would also derive `MI_GUARDED` from these; setting it here keeps the C
     // library and `cfg(mi_guarded)` (the sys crate's `MI_GUARDED`) on one decision.
-    println!("cargo::rustc-check-cfg=cfg(mi_guarded)");
+    // `cfg(mi_debug)` (the sys crate's `MI_DEBUG`) reports `MI_DEBUG` the same way.
+    println!("cargo::rustc-check-cfg=cfg(mi_debug, mi_guarded)");
     if feature("DEBUG") {
         defines.extend([("MI_DEBUG", "2"), ("MI_GUARDED", "1")]);
+        println!("cargo::rustc-cfg=mi_debug");
         println!("cargo::rustc-cfg=mi_guarded");
     } else {
         defines.extend([("MI_DEBUG", "0"), ("NDEBUG", "1"), ("MI_GUARDED", "0")]);

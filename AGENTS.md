@@ -35,7 +35,7 @@ Guidance for coding agents working in this repository. The [README](README.md) c
 - Never edit `mimalloc-rust-sys/src/bindings.rs` by hand. Regenerate it with `cargo run -p xtask -- bindgen` and review the diff.
 - Never modify files under `mimalloc-rust-sys/c_src/`. Upgrade upstream by moving the submodule and following the Upgrading section of `UPSTREAM.md`.
 - `build.rs` mirrors the defines and flags that upstream's `CMakeLists.txt` produces. Record every intentional difference in the Build configuration table or Intentional differences section of `UPSTREAM.md`.
-- `build.rs` alone decides `MI_GUARDED`: it defines the C macro and emits `cfg(mi_guarded)`. Rust code reads `mimalloc_rust_sys::MI_GUARDED` and `MI_MALLOC_ALIGN` and never re-derives them from features.
+- `build.rs` alone decides `MI_DEBUG` and `MI_GUARDED`: it defines the C macros and emits `cfg(mi_debug)` and `cfg(mi_guarded)`. Rust code reads `mimalloc_rust_sys::MI_DEBUG`, `MI_GUARDED` and `MI_MALLOC_ALIGN` and never re-derives them from features.
 - The targets that accept `override` are listed in `build.rs`. Changing that list means updating the README's Supported targets table, the CI matrix and the tests together.
 - Every `unsafe` block or impl carries a `SAFETY:` comment; the workspace lints in the root `Cargo.toml` enforce one unsafe operation per block.
 - Features must stay valid on every target, because Cargo unifies them across the dependency graph: fail the build only when a feature's promise cannot be kept.
