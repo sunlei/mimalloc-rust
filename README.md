@@ -11,7 +11,7 @@ The vendored mimalloc version and how the build relates to upstream are document
 
 ```toml
 [dependencies]
-mimalloc-rust = { git = "https://github.com/sunlei/mimalloc-rust", tag = "v0.1.2" }
+mimalloc-rust = { git = "https://github.com/sunlei/mimalloc-rust", tag = "v0.1.3" }
 ```
 
 ```rust
