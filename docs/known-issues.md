@@ -74,7 +74,7 @@ A build script can only add link arguments for its own package, so there is no w
 
 **Mitigation:** raise the threshold with `MIMALLOC_STATS_MERGE_THRESHOLD` before the process starts, or with `mi_option_set(mi_option_stats_merge_threshold, ...)`; the value is in bytes. In the C program, 4194304 (4 MiB) brought both sizes back to the v3.5.3 times. Process-wide statistics such as `stats_json()` then lag by up to that many bytes per thread. 0 turns the merging off, which brings back the problem of #1410: a thread that frees memory but rarely allocates keeps its frees out of those statistics until it collects or exits.
 
-**Upstream status:** not reported yet.
+**Upstream status:** reported as [microsoft/mimalloc#1458](https://github.com/microsoft/mimalloc/issues/1458).
 
 **If you hit it:** apply the mitigation if your workload allocates and frees blocks of 1 KiB or more at a high rate and does not need up-to-date process-wide statistics.
 

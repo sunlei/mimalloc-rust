@@ -18,7 +18,7 @@ Only `include/` and `src/static.c` (which `#include`s every other source file) t
 |---|---|---|
 | `MI_DEBUG=0`, `NDEBUG=1` | default | CMake release build; `types.h` would otherwise default `MI_DEBUG` to 2 because cc never defines `NDEBUG` |
 | `MI_DEBUG=2` | `debug` feature | CMake Debug build (`MI_DEBUG=INTERNAL`) |
-| `MI_GUARDED=0`, or `MI_GUARDED=2` with the `debug` feature | always | CMake's `MI_GUARDED=DEFAULT`, which is `FULL` (`MI_GUARDED=2`, fine-grained sample rates) in a Debug build. Set explicitly so that `build.rs` also reports it to Rust as `cfg(mi_guarded)`. With `MI_DEBUG=2` alone, `types.h` would pick `MI_GUARDED=1`, whose padded aligned allocations fail an assertion in v3.6.0 when guarded sampling is on |
+| `MI_GUARDED=0`, or `MI_GUARDED=2` with the `debug` feature | always | CMake's `MI_GUARDED=DEFAULT`, which is `FULL` (`MI_GUARDED=2`, fine-grained sample rates) in a Debug build. Set explicitly so that `build.rs` also reports it to Rust as `cfg(mi_guarded)`. With `MI_DEBUG=2` alone, `types.h` would pick `MI_GUARDED=1`, whose padded aligned allocations fail an assertion in v3.6.0 when guarded sampling is on ([microsoft/mimalloc#1457](https://github.com/microsoft/mimalloc/issues/1457)) |
 | `MI_PROFILE` not set (`types.h` default 1) | always | CMake's default when `MI_DEBUG` is off. A CMake Debug build uses `MI_PROFILE=2`, which allows finer profiling sample rates (below 64 KiB) and selects `MI_SAMPLE=2` |
 | `MI_SECURE=4` | `secure` feature | `MI_SECURE=ON` |
 | `MI_LIBC_MUSL=1` | musl targets | `MI_LIBC_MUSL=ON`, which upstream expects the builder to set; it changes thread-pointer selection in `prim-tls.h` |
