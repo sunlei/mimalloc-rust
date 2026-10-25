@@ -15,8 +15,8 @@ use mimalloc_rust_sys::{mi_free, mi_free_size_aligned, mi_malloc, mi_malloc_alig
 
 const BATCH: usize = 64;
 // 48, 224 and 640 have size classes that are not powers of two, where the aligned entry
-// point falls back to over-allocation (see docs/known-issues.md); the other sizes have
-// power-of-two size classes.
+// point fell back to over-allocation before mimalloc v3.6.0 (see docs/known-issues.md); the
+// other sizes have power-of-two size classes.
 const SIZES: [usize; 9] = [8, 24, 48, 64, 224, 256, 640, 1024, 4096];
 // `mi_malloc` already guarantees this alignment, so `MiMalloc` takes its `mi_malloc` path
 // unless built with `debug`. The `black_box`ed layout keeps `MiMalloc`'s alignment check from

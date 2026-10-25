@@ -28,9 +28,8 @@ pub struct MiMalloc;
 /// Size classes above 8 bytes are multiples of 16 bytes and pages start their blocks at a
 /// multiple of 16, so every such block is 16-byte aligned; the 8-byte class only serves
 /// requests of at most 8 bytes. This is the condition std's `System` uses on Unix to pick
-/// `malloc`. The `mi_*_aligned` functions would also work, but on a fast-path miss they
-/// over-allocate any size class that is not a power of two, which costs time and memory
-/// (see `docs/known-issues.md`).
+/// `malloc`. The `mi_*_aligned` functions would also work, but they remain slower, by up to
+/// 12% at 1024 and 4096 bytes (see `docs/known-issues.md`).
 #[inline]
 const fn mi_malloc_aligns(size: usize, align: usize) -> bool {
     align <= ffi::MI_MALLOC_ALIGN && align <= size
