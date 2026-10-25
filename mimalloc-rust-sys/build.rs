@@ -148,17 +148,6 @@ fn main() {
             }
             _ => {}
         }
-        // Keeps the compiler from pairing the page accesses of `mi_malloc` and `mi_free`
-        // into `ldp`/`stp`, whose partial overlap stalls the next load when a free and an
-        // allocation follow each other (see docs/known-issues.md). The GCC parameters only
-        // exist since GCC 14; older versions keep the pairing.
-        if is_clang {
-            build.flag("-mllvm").flag("-aarch64-enable-ldst-opt=false");
-        } else {
-            build
-                .flag_if_supported("--param=aarch64-ldp-policy=never")
-                .flag_if_supported("--param=aarch64-stp-policy=never");
-        }
     }
 
     for (name, value) in &defines {
