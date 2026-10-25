@@ -65,7 +65,7 @@ pub const MI_DEBUG: bool = cfg!(mi_debug);
 
 /// Whether the library was built with `MI_GUARDED`, which the `debug` feature enables.
 ///
-/// With guarded sampling and the `guarded_precise` option enabled at run time, `mi_malloc`
+/// With guarded sampling and the `unsafe_guarded_precise` option enabled at run time, `mi_malloc`
 /// can return blocks that are not 16-byte aligned. Features are unified across the dependency
 /// graph, so dependents should read this instead of their own `debug` feature.
 pub const MI_GUARDED: bool = cfg!(mi_guarded);

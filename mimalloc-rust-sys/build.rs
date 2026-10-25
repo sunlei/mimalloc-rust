@@ -38,12 +38,13 @@ fn main() {
 
     // Without explicit values `MI_DEBUG` defaults to 2 whenever `NDEBUG` is undefined
     // (types.h), and cc never defines `NDEBUG`.
-    // `types.h` would also derive `MI_GUARDED` from these; setting it here keeps the C
-    // library and `cfg(mi_guarded)` (the sys crate's `MI_GUARDED`) on one decision.
+    // With `debug`, `MI_GUARDED=2` (fine-grained sampling) is what upstream's CMake sets for
+    // its debug builds; `types.h` alone would pick 1. Setting it here also keeps the C library
+    // and `cfg(mi_guarded)` (the sys crate's `MI_GUARDED`) on one decision.
     // `cfg(mi_debug)` (the sys crate's `MI_DEBUG`) reports `MI_DEBUG` the same way.
     println!("cargo::rustc-check-cfg=cfg(mi_debug, mi_guarded)");
     if feature("DEBUG") {
-        defines.extend([("MI_DEBUG", "2"), ("MI_GUARDED", "1")]);
+        defines.extend([("MI_DEBUG", "2"), ("MI_GUARDED", "2")]);
         println!("cargo::rustc-cfg=mi_debug");
         println!("cargo::rustc-cfg=mi_guarded");
     } else {
@@ -55,6 +56,21 @@ fn main() {
     if is_musl {
         // Upstream cannot detect musl itself and expects the builder to set this.
         defines.push(("MI_LIBC_MUSL", "1"));
+    }
+    // Upstream's CMake detects these headers for the profiler (`pprof.c`): `unistd.h` lets it
+    // ignore `MIMALLOC_PROFILE` in setuid/setgid processes, `execinfo.h` gives its samples
+    // backtraces. musl has no `execinfo.h`; there upstream falls back to libunwind when it
+    // is installed, which we do not link.
+    // Cargo leaves this unset for targets without a family.
+    if env::var("CARGO_CFG_TARGET_FAMILY")
+        .unwrap_or_default()
+        .split(',')
+        .any(|family| family == "unix")
+    {
+        defines.push(("MI_HAS_UNISTDH", "1"));
+    }
+    if target_os == "macos" || (target_os == "linux" && target_env == "gnu") {
+        defines.push(("MI_HAS_EXECINFOH", "1"));
     }
     if feature("NO_THP") && matches!(target_os.as_str(), "linux" | "android") {
         // This is what upstream's `MI_NO_THP=ON` turns into; the C-level `MI_NO_THP`

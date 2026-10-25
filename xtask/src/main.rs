@@ -171,9 +171,9 @@ fn generate_bindings(include_dir: &Path) -> String {
         .allowlist_var("MI_.*")
         // Signedness differs between targets; the sys crate defines it per target.
         .blocklist_type("wchar_t")
-        // Declared in mimalloc.h but not linkable: the first two have no definition in
-        // the v3.5.3 sources, the last two only exist with MI_MALLOC_OVERRIDE.
-        .blocklist_function("mi_collect_reduce|mi_stats_merge|mi_malloc_size|mi_malloc_usable_size")
+        // Declared in mimalloc.h but not linkable: neither has a definition in the v3.6.0
+        // sources.
+        .blocklist_function("mi_collect_reduce|mi_stats_merge")
         .use_core()
         // `char` is unsigned on Linux aarch64 and signed elsewhere; `c_char` keeps one
         // file valid for every target.

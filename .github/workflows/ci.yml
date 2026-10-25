@@ -57,10 +57,12 @@ jobs:
       - name: Upstream C tests
         run: cargo test --locked --release -p upstream-tests
       # The sample rate defaults to 0, which leaves guarded allocation unexercised; upstream's
-      # CMake tests set it the same way. mimalloc reads it at process start.
+      # CMake tests use 1024. mimalloc reads it at process start. With the fine-grained sampling
+      # of `MI_GUARDED=2`, 1024 made each stress test about three times slower than 4096, which
+      # still guards more blocks than v3.5.3 did at 1024.
       - name: Upstream C tests (debug)
         env:
-          MIMALLOC_GUARDED_SAMPLE_RATE: 1024
+          MIMALLOC_GUARDED_SAMPLE_RATE: 4096
         run: cargo test --locked --release -p upstream-tests --features mimalloc-rust-sys/debug
       - name: Upstream C tests (secure)
         run: cargo test --locked --release -p upstream-tests --features mimalloc-rust-sys/secure
