@@ -1,0 +1,21 @@
+//! Upstream's `test/test-bitmap.c`: the arena bitmap chunk operations, called through the
+//! library's internal functions; the exit status counts failures.
+
+use std::ffi::c_int;
+use std::process::ExitCode;
+
+use mimalloc_rust_sys as _;
+
+unsafe extern "C" {
+    fn mi_test_bitmap_main() -> c_int;
+}
+
+fn main() -> ExitCode {
+    // SAFETY: the C test takes no arguments and only calls the mimalloc API.
+    let failed = unsafe { mi_test_bitmap_main() };
+    if failed == 0 {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    }
+}

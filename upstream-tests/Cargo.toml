@@ -22,11 +22,39 @@ name = "api_fill"
 harness = false
 
 [[test]]
+name = "arena"
+harness = false
+
+[[test]]
+name = "bitmap"
+harness = false
+
+[[test]]
+name = "fork"
+harness = false
+
+[[test]]
+name = "pprof"
+harness = false
+
+[[test]]
+name = "profile"
+harness = false
+
+[[test]]
+name = "qsbr"
+harness = false
+
+[[test]]
 name = "stress"
 harness = false
 
 [[test]]
 name = "stress_heaps"
+harness = false
+
+[[test]]
+name = "stress_pprof"
 harness = false
 
 [[test]]
