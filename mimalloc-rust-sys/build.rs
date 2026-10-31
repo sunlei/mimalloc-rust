@@ -59,8 +59,9 @@ fn main() {
     }
     // Upstream's CMake detects these headers for the profiler (`pprof.c`): `unistd.h` lets it
     // ignore `MIMALLOC_PROFILE` in setuid/setgid processes, `execinfo.h` gives its samples
-    // backtraces. musl has no `execinfo.h`; there upstream falls back to libunwind when it
-    // is installed, which we do not link.
+    // backtraces. musl has no `execinfo.h`; there upstream falls back to `_Unwind_Backtrace`
+    // (`MI_HAS_UNWINDH`), which we do not define because `no_std` musl programs link no
+    // unwinder (see UPSTREAM.md).
     // Cargo leaves this unset for targets without a family.
     if env::var("CARGO_CFG_TARGET_FAMILY")
         .unwrap_or_default()

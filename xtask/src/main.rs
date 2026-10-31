@@ -171,7 +171,7 @@ fn generate_bindings(include_dir: &Path) -> String {
         .allowlist_var("MI_.*")
         // Signedness differs between targets; the sys crate defines it per target.
         .blocklist_type("wchar_t")
-        // Declared in mimalloc.h but not linkable: neither has a definition in the v3.6.0
+        // Declared in mimalloc.h but not linkable: neither has a definition in the v3.6.1
         // sources.
         .blocklist_function("mi_collect_reduce|mi_stats_merge")
         .use_core()
