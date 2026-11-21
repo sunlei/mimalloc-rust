@@ -46,6 +46,10 @@ name = "qsbr"
 harness = false
 
 [[test]]
+name = "secure"
+harness = false
+
+[[test]]
 name = "stress"
 harness = false
 

@@ -20,30 +20,32 @@
 //!   with the C library's `free`, unless the `override` feature has replaced `free`.
 //! - `mi_free_small` and `mi_free_small_nonnull` only accept blocks from `mi_*alloc_small`.
 //! - A `mi_heap_t` can be used and its blocks freed from any thread. `mi_heap_delete`
-//!   moves live blocks to the main heap, while `mi_heap_destroy` frees them, leaving every
-//!   outstanding pointer into that heap dangling.
+//!   leaves live blocks available to free. Other threads must stop using the heap before
+//!   deletion, or call `mi_thread_heap_release` if they still need to free blocks concurrently.
+//!   After releasing a heap, a thread can no longer allocate in it. `mi_heap_destroy` requires
+//!   exclusive access and frees all live blocks, leaving outstanding pointers dangling.
+//!   Pass `mi_heap_main()` when targeting the main heap, since public heap APIs no longer
+//!   interpret a null heap as the main heap.
+//! - Keep other threads from allocating in a visited heap or freeing its blocks during
+//!   `mi_heap_visit_blocks` or `mi_heap_visit_abandoned_blocks`.
 //! - A `mi_theap_t` can only allocate on the thread that created it.
 //! - Callbacks and their `arg` registered with `mi_register_deferred_free`,
 //!   `mi_register_output` and `mi_register_error` are process-global and run on whichever
-//!   thread triggers them, so `arg` must be safe to use from every thread. Each callback
-//!   and its `arg` are stored separately, so register each one once, from a single thread,
-//!   during initialization: replacing one while it can run may pair a callback with the
-//!   wrong `arg`. Registering again does not wait for calls in progress, so whatever `arg`
-//!   points to must outlive every call that can still reach it.
+//!   thread triggers them, so `arg` must be safe to use from every thread. A callback always
+//!   receives its registered `arg`. Re-registration does not wait for readers to finish, so
+//!   the previous callback and argument must remain valid while any thread can still use them.
 //! - The deferred free callback runs from allocation and collection, and is not re-entered
 //!   on the same thread.
-//! - A registered error callback runs after the message is printed and replaces the
-//!   default handling, which sets `errno` and, with the `debug` or `secure` feature, aborts
-//!   on corrupted metadata (`EFAULT`). If the callback returns, the failing call continues
-//!   on its own error path without that handling.
+//! - A registered error callback runs after the diagnostic and replaces the default error
+//!   handler. An allocator operation sets `errno` on its own failure path when required by
+//!   its contract. Secure builds still abort on corrupted metadata (`EFAULT`) if the callback
+//!   returns. Unrecoverable allocator errors abort in every build.
 //! - Unwinding out of an `extern "C"` callback aborts the process, so a panic in one is
 //!   fatal.
-//! - `mi_option_set` and its variants write the option with a plain store, while allocation
-//!   on other threads reads options without synchronization. Call them only while no other
-//!   thread can allocate, such as in `main` before spawning threads; serializing the setters is
-//!   not enough. The `MIMALLOC_*` environment variables are read when mimalloc initializes
-//!   at process start, so they must be set before the process starts, not changed from
-//!   within it.
+//! - Option setters synchronize with concurrent readers. Options consumed at process or
+//!   heap initialization must be set before that initialization to affect it. Set
+//!   `MIMALLOC_*` variables before process start. Secure builds only accept `show_stats`,
+//!   `verbose` and `allow_thp` from the environment.
 //! - The `*_stats_get` functions return `false` unless the `size` and `version` fields of the
 //!   destination already match, which the unbound `mi_stats_init` would arrange: zero a
 //!   `mi_stats_t`, then set `size` to its size and `version` to [`MI_STAT_VERSION`].
@@ -65,15 +67,16 @@ pub const MI_DEBUG: bool = cfg!(mi_debug);
 
 /// Whether the library was built with `MI_GUARDED`, which the `debug` feature enables.
 ///
-/// With guarded sampling and the `unsafe_guarded_precise` option enabled at run time, `mi_malloc`
-/// can return blocks that are not 16-byte aligned. Features are unified across the dependency
-/// graph, so dependents should read this instead of their own `debug` feature.
+/// Features are unified across the dependency graph, so dependents should read this instead
+/// of their own `debug` feature.
 pub const MI_GUARDED: bool = cfg!(mi_guarded);
 
 /// The alignment `mi_malloc` gives every block of at least this many bytes.
 ///
-/// This is `MI_MAX_ALIGN_SIZE` from `types.h` (16), which the build script leaves at its
-/// default, or 1 with [`MI_GUARDED`], whose sampled blocks need not be aligned at all.
+/// This is the default `MI_MAX_ALIGN_SIZE` from `types.h` (16), or a conservative bound
+/// of 1 with [`MI_GUARDED`]. Since v3.7.0, guarded sampling rounds up object sizes by
+/// default. Precise placement requires the C build macro `MI_UNSAFE_GUARDED_PRECISE`,
+/// which this crate does not enable.
 pub const MI_MALLOC_ALIGN: usize = if MI_GUARDED { 1 } else { 16 };
 
 /// C `wchar_t`, used by `mi_wcsdup` and `mi_wdupenv_s`.

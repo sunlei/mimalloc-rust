@@ -56,6 +56,10 @@ jobs:
       - run: cargo test --locked --release
       - name: Upstream C tests
         run: cargo test --locked --release -p upstream-tests
+      - name: Upstream QSBR with page retention disabled
+        env:
+          MIMALLOC_PAGE_FULL_RETAIN: '-1'
+        run: cargo test --locked --release -p upstream-tests --test qsbr
       # The sample rate defaults to 0, which leaves guarded allocation unexercised; upstream's
       # CMake tests use 1024. mimalloc reads it at process start. With the fine-grained sampling
       # of `MI_GUARDED=2`, 1024 made each stress test about three times slower than 4096, which

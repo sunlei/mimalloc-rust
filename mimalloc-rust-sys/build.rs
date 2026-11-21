@@ -57,9 +57,8 @@ fn main() {
         // Upstream cannot detect musl itself and expects the builder to set this.
         defines.push(("MI_LIBC_MUSL", "1"));
     }
-    // Upstream's CMake detects these headers for the profiler (`pprof.c`): `unistd.h` lets it
-    // ignore `MIMALLOC_PROFILE` in setuid/setgid processes, `execinfo.h` gives its samples
-    // backtraces. musl has no `execinfo.h`; there upstream falls back to `_Unwind_Backtrace`
+    // Upstream's CMake detects `unistd.h` and checks whether `backtrace` in `execinfo.h`
+    // is linkable. macOS and Linux glibc provide it; on musl CMake falls back to `_Unwind_Backtrace`
     // (`MI_HAS_UNWINDH`), which we do not define because `no_std` musl programs link no
     // unwinder (see UPSTREAM.md).
     // Cargo leaves this unset for targets without a family.

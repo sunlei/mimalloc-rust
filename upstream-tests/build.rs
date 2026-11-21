@@ -9,13 +9,14 @@ use std::path::{Path, PathBuf};
 // The tests upstream's CMakeLists.txt registers for a static build on our targets, except
 // the target-dependent ones in `main`, `qsbr` (see below), and `test-rust`, which tests
 // upstream's own Rust crate.
-const TESTS: [&str; 9] = [
+const TESTS: [&str; 10] = [
     "api",
     "api-fill",
     "arena",
     "bitmap",
     "fork",
     "profile",
+    "secure",
     "stress",
     "stress-heaps",
     "stress-subprocs",

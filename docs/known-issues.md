@@ -30,7 +30,7 @@ A build script can only add link arguments for its own package, so there is no w
 
 ## Before mimalloc v3.6.0, the aligned functions took a slow path for sizes whose size class is not a power of two
 
-**Status:** fixed in mimalloc v3.6.0. `MiMalloc` still calls `mi_malloc` where it can, because the aligned functions remain slower: on x86_64 at every measured size, on aarch64 mainly at 1 KiB and 4 KiB (see Fix).
+**Status:** the over-allocation was fixed in mimalloc v3.6.0. `MiMalloc` still calls `mi_malloc` where it can. On Graviton5 with Clang 19.1.7 and v3.7.0, `mi_malloc_aligned(size, 8)` was slower at 256 bytes and 1 KiB in every measured layout, with median costs of 7.6% and 3.2%. At 4 KiB the median cost fell from 13.4% in v3.6.1 to 2.4% in v3.7.0. See the [v3.7.0 measurements](benchmarks/20261121-mimalloc-v3.7.0.md) and the earlier measurements below.
 
 **Targets:** all, through the `mi_*_aligned` functions of mimalloc before v3.6.0. `MiMalloc::alloc`, `alloc_zeroed` and `realloc` used them for every alignment before this crate added its `mi_malloc` path, and still use them with the `debug` feature.
 
@@ -42,9 +42,9 @@ A build script can only add link arguments for its own package, so there is no w
 
 **Fix:** `MiMalloc` calls `mi_malloc`, `mi_zalloc` and `mi_realloc` when `align <= 16 && align <= size`, the same condition std's `System` uses on Unix, and the aligned functions otherwise. In the default configuration (`MI_ALIGN2W` in `page-queue.c`), size classes above 8 bytes are multiples of 16 bytes and pages start their blocks at a multiple of 16, so every such block is 16-byte aligned. `every_live_block_is_aligned` in `mimalloc-rust/tests/global.rs` checks this with many blocks of each size alive. With v3.6.0 the path is no longer needed to avoid the over-allocation, but it is kept for speed: on Neoverse-V3 (Graviton5), over five code layouts each, `mi_malloc_aligned(size, 8)` in `alloc_free_batch` no longer had the cliff at 48, 224 and 640 bytes (48–59% slower than `mi_malloc` with v3.5.3, at most 5% with v3.6.0), but was still 4–12% slower at 256, 640, 1024 and 4096 bytes with Clang 19.1.7 and 3–12% slower at 256, 1024 and 4096 bytes with GCC 14.2. With v3.6.1, it was 13% slower at 4096 bytes on Neoverse-V3 with both compilers, and with GCC also 11% at 1024 bytes and 2–6% at 8, 64, 224, 256 and 640 bytes; Clang showed no difference beyond layout noise at the other sizes. On a performance core of an Intel Core i5-13400, it was 18–27% slower from 8 to 640 bytes and 11–14% slower at 1024 and 4096 bytes with both compilers, as with v3.5.3 at the power-of-two size classes (see Symptom). Step 6 of Upgrading in `mimalloc-rust-sys/UPSTREAM.md` re-measures this.
 
-**Why `debug` uses the aligned functions:** the `debug` feature builds with `MI_DEBUG=2`, without `NDEBUG` and with `MI_GUARDED=2`, as upstream's CMake Debug build does. With guarded sampling and `MIMALLOC_UNSAFE_GUARDED_PRECISE=1` (`MIMALLOC_GUARDED_PRECISE=1` before v3.6.0), mimalloc places a sampled object right before its guard page without rounding its size, so `mi_malloc(17)` returned 64 of 64 blocks that were not 16-byte aligned in a probe. `MiMalloc` therefore compares the alignment against `mimalloc_rust_sys::MI_MALLOC_ALIGN` instead of 16. It is 1 when the sys crate's build script enables `MI_GUARDED`, however the `debug` feature was enabled, so `MiMalloc` then uses the aligned functions for every alignment above 1. In that configuration a test binary using `MiMalloc` also aborted on mimalloc's own `_mi_memcpy_aligned` assertion during start-up, whether or not `MiMalloc` used the `mi_malloc` path.
+**Guarded sampling:** through v3.6.1, a runtime option could place a guarded object immediately before its guard page without rounding the object size. In a probe with the option enabled, `mi_malloc(17)` returned 64 of 64 blocks that were not 16-byte aligned. Since v3.7.0, precise placement requires the C build macro `MI_UNSAFE_GUARDED_PRECISE=1`, which this crate leaves off. `mimalloc_rust_sys::MI_MALLOC_ALIGN` remains a conservative bound of 1 when `MI_GUARDED` is on, so `MiMalloc` routes alignments above 1 through the aligned entry points in `debug` builds.
 
-**If you hit it:** this crate's mimalloc (v3.6.1) contains the fix. With an older mimalloc, call `mi_malloc` for alignments it already guarantees, as `MiMalloc` does.
+**If you hit it:** this crate's mimalloc contains the v3.6.0 fix. With an older mimalloc, call `mi_malloc` for alignments it already guarantees, as `MiMalloc` does.
 
 ## On aarch64, a free followed by an allocation stalls on store-to-load forwarding
 
@@ -62,9 +62,9 @@ A build script can only add link arguments for its own package, so there is no w
 
 **If you hit it:** use mimalloc v3.6.0 or later. To check a build, disassemble `mi_malloc` and `mi_free`: the accesses to `free`, `local_free` and `xused` of the page should be single `ldr`/`str` instructions, not `ldp`/`stp`.
 
-## Since mimalloc v3.6.0, batches of 1 KiB and 4 KiB allocations are slower
+## In mimalloc v3.6.0 and v3.6.1, batches of 1 KiB and 4 KiB allocations could be slower
 
-**Status:** mostly fixed in mimalloc v3.6.1, which raised the default merge threshold to 4 MiB. Batches of these sizes remain up to 7% slower than with v3.5.3; turning the merging off removes at most 2 percentage points of that, and the rest has no single cause (see Cause).
+**Status:** mostly fixed in mimalloc v3.6.1, which raised the default merge threshold to 4 MiB. In that release, batches of these sizes were up to 7% slower than with v3.5.3. Turning the merging off removed at most 2 percentage points of that. With v3.7.0 on Graviton5 and Clang 19.1.7, `MiMalloc` batches took 5.5% and 5.8% less time at 1 KiB and 4 KiB than with v3.6.1. The [v3.7.0 comparison](benchmarks/20261121-mimalloc-v3.7.0.md) used v3.6.1 as its baseline.
 
 **Targets:** all. Measured on Linux aarch64 and x86_64 and on macOS aarch64.
 
@@ -76,7 +76,7 @@ A build script can only add link arguments for its own package, so there is no w
 
 **Upstream status:** reported as [microsoft/mimalloc#1458](https://github.com/microsoft/mimalloc/issues/1458) and closed after `f0032d4c`. The maintainer prefers to keep the merging on in release builds so that statistics stay useful, and noted that the benchmark does not touch the memory it allocates, which may make it more sensitive to this than real workloads. The remainder is not reported upstream, since no single commit explains it.
 
-**If you hit it:** this crate's mimalloc (v3.6.1) contains the larger default. The remainder does not depend on the threshold; if it matters for your workload, measure the workload itself against v3.5.3.
+**If you hit it:** the default threshold is 4 MiB starting in v3.6.1. In the v3.6.1 measurements, most of the remaining difference was unrelated to the threshold. Measure your workload against v3.5.3 if the difference matters.
 
 ## GCC warns about a write to address zero in `_mi_theap_malloc_guarded`
 
