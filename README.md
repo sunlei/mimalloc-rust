@@ -79,6 +79,7 @@ cargo test                            # mimalloc-rust and mimalloc-rust-sys
 cargo run -p xtask -- bindgen         # regenerate mimalloc-rust-sys/src/bindings.rs
 cargo run -p xtask -- bindgen --check # fail if the committed bindings differ for this target
 cargo run -p xtask -- check-symbols   # fail if a bound function is not defined in the library
+cargo run -p xtask -- test-dlopen     # test the local-dynamic TLS plugin on glibc
 cargo bench -p bench                  # compare mi_malloc, mi_malloc_aligned and MiMalloc
 ```
 

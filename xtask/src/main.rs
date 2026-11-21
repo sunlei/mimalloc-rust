@@ -1,11 +1,12 @@
-//! Maintenance tasks for the mimalloc bindings.
+//! Maintenance tasks for the workspace.
 //!
 //! - `bindgen`: regenerate `mimalloc-rust-sys/src/bindings.rs` from the vendored headers.
 //! - `bindgen --check`: regenerate in memory and fail if the committed file differs.
 //! - `check-symbols`: build the static library and fail if any bound function has no
 //!   defined symbol in it. This proves presence only, not signatures or visibility.
+//! - `test-dlopen`: build and load the plugin after exhausting glibc's static TLS surplus.
 //!
-//! Run the checks natively on every supported target: the headers include libc headers
+//! Run the binding checks natively on every supported target: the headers include libc headers
 //! (`assert.h`, `string.h`), so each target's own sysroot must be visible to libclang.
 //! On musl, build with `RUSTFLAGS="-C target-feature=-crt-static"`: libclang is loaded with
 //! `dlopen`, which a statically linked musl binary cannot do.
@@ -17,7 +18,7 @@ use std::{env, fs};
 
 const BINDINGS: &str = "mimalloc-rust-sys/src/bindings.rs";
 const INCLUDE_DIR: &str = "mimalloc-rust-sys/c_src/mimalloc/include";
-const USAGE: &str = "usage: cargo run -p xtask -- bindgen [--check] | check-symbols";
+const USAGE: &str = "usage: cargo run -p xtask -- bindgen [--check] | check-symbols | test-dlopen";
 
 fn main() -> ExitCode {
     let args: Vec<String> = env::args().skip(1).collect();
@@ -26,6 +27,7 @@ fn main() -> ExitCode {
         ["bindgen"] => bindgen(false),
         ["bindgen", "--check"] => bindgen(true),
         ["check-symbols"] => check_symbols(),
+        ["test-dlopen"] => test_dlopen(),
         _ => {
             eprintln!("{USAGE}");
             ExitCode::FAILURE
@@ -38,6 +40,12 @@ fn workspace_root() -> PathBuf {
         .parent()
         .expect("xtask lives directly under the workspace root")
         .to_path_buf()
+}
+
+fn workspace_cargo(root: &Path) -> Command {
+    let mut cargo = Command::new(env::var_os("CARGO").unwrap_or_else(|| "cargo".into()));
+    cargo.current_dir(root);
+    cargo
 }
 
 fn bindgen(check: bool) -> ExitCode {
@@ -102,9 +110,7 @@ fn check_symbols() -> ExitCode {
 
 /// Builds the sys crate and returns the path of the static library its build script produced.
 fn build_static_library(root: &Path) -> PathBuf {
-    let cargo = env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
-    let output = Command::new(cargo)
-        .current_dir(root)
+    let output = workspace_cargo(root)
         .args([
             "build",
             "--package",
@@ -128,6 +134,70 @@ fn build_static_library(root: &Path) -> PathBuf {
         .find_map(|message| message["out_dir"].as_str().map(PathBuf::from))
         .expect("cargo reported the mimalloc-rust-sys build script output directory");
     out_dir.join("libmimalloc.a")
+}
+
+fn test_dlopen() -> ExitCode {
+    if !cfg!(all(target_os = "linux", target_env = "gnu")) {
+        println!("skipped: the static TLS surplus is specific to glibc");
+        return ExitCode::SUCCESS;
+    }
+
+    let root = workspace_root();
+    // Ask Cargo for the artifact path. Since Cargo 1.100, the test executable and
+    // the shared library can live in different intermediate directories.
+    let output = workspace_cargo(&root)
+        .args([
+            "build",
+            "--locked",
+            "--release",
+            "-p",
+            "dlopen-plugin",
+            "--lib",
+            "--message-format=json-render-diagnostics",
+        ])
+        .stderr(Stdio::inherit())
+        .output()
+        .expect("building the dlopen plugin");
+    if !output.status.success() {
+        return ExitCode::FAILURE;
+    }
+    let stdout = String::from_utf8(output.stdout).expect("cargo emits UTF-8 JSON");
+    let plugin = stdout
+        .lines()
+        .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+        .filter(|message| {
+            message["reason"] == "compiler-artifact" && message["target"]["name"] == "dlopen_plugin"
+        })
+        .find_map(|message| {
+            message["filenames"]
+                .as_array()?
+                .iter()
+                .filter_map(serde_json::Value::as_str)
+                .map(Path::new)
+                .find(|path| path.extension().is_some_and(|ext| ext == "so"))
+                .map(Path::to_path_buf)
+        })
+        .expect("cargo reported the dlopen plugin shared library");
+
+    let status = workspace_cargo(&root)
+        .args([
+            "test",
+            "--locked",
+            "--release",
+            "-p",
+            "dlopen-plugin",
+            "--test",
+            "dlopen",
+            "--",
+        ])
+        .arg(plugin)
+        .status()
+        .expect("running the dlopen test");
+    if status.success() {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    }
 }
 
 fn defined_symbols(library: &Path) -> BTreeSet<String> {

@@ -2,6 +2,7 @@
 //! surplus, as in a process that already loaded several initial-exec libraries. With the
 //! default initial-exec model, mimalloc's thread locals would need that surplus and `dlopen`
 //! would fail with "cannot allocate memory in static TLS block".
+//! Run with `cargo run --locked -p xtask -- test-dlopen`.
 
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 fn main() {
@@ -51,11 +52,11 @@ mod glibc {
     }
 
     pub(super) fn main() {
+        let plugin = env::args_os()
+            .nth(1)
+            .expect("pass the plugin path or run `cargo run -p xtask -- test-dlopen`");
         let hog = Path::new(env!("OUT_DIR")).join("libhog.so");
         let copies = Path::new(env!("OUT_DIR")).join("hogs");
-        // Cargo places a cdylib next to the test executable without a hash in its name.
-        let exe = env::current_exe().expect("test executable path");
-        let plugin = exe.with_file_name("libdlopen_plugin.so");
 
         // glibc treats each file as a separate library, so every copy takes its own TLS.
         let _ = fs::remove_dir_all(&copies);
@@ -75,7 +76,7 @@ mod glibc {
         }
         println!("filled the static TLS surplus with {loaded} libraries of {HOG_TLS} bytes");
 
-        let handle = load(&plugin).unwrap_or_else(|message| panic!("{message}"));
+        let handle = load(Path::new(&plugin)).unwrap_or_else(|message| panic!("{message}"));
         // SAFETY: `handle` is a loaded library and the name is a valid C string.
         let symbol = unsafe { dlsym(handle, c"plugin_run".as_ptr()) };
         assert!(!symbol.is_null(), "plugin_run not found");
