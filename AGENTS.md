@@ -49,6 +49,7 @@ Guidance for coding agents working in this repository. The [README](README.md) c
 ## Writing
 
 - Repository text, comments and commit messages are in English.
+- Use relative paths for repository files. Keep private hostnames, machine-local paths, internal artifact locations and raw logs outside this public repository.
 - Keep each Markdown paragraph on a single line.
 - Entries in `docs/known-issues.md` use the fields Status, Targets, Symptom, Cause and If you hit it, plus fields such as Mitigation, Fix, Upstream status or Residual risk where they apply.
 - Commits follow Conventional Commits with an optional scope such as `sys` or `xtask`: an imperative subject of at most 60 characters, then a blank line and a bulleted body.
