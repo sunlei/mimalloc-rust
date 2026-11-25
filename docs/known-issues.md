@@ -30,7 +30,7 @@ A build script can only add link arguments for its own package, so there is no w
 
 ## Before mimalloc v3.6.0, the aligned functions took a slow path for sizes whose size class is not a power of two
 
-**Status:** the over-allocation was fixed in mimalloc v3.6.0. `MiMalloc` still calls `mi_malloc` where it can. On Graviton5 with Clang 19.1.7 and v3.7.0, `mi_malloc_aligned(size, 8)` was slower at 256 bytes and 1 KiB in every measured layout, with median costs of 7.6% and 3.2%. At 4 KiB the median cost fell from 13.4% in v3.6.1 to 2.4% in v3.7.0. See the [v3.7.0 measurements](benchmarks/20261121-mimalloc-v3.7.0.md) and the earlier measurements below.
+**Status:** the over-allocation was fixed in mimalloc v3.6.0. `MiMalloc` still calls `mi_malloc` where it can. On Graviton5 with Clang 19.1.7 and v3.7.1, `mi_malloc_aligned(size, 8)` was 2.1% to 5.4% slower at 64 bytes across six layouts, with a 3.9% median overhead. At 256 bytes and 1 KiB, the median overhead fell below 2%. See the [v3.7.1 measurements](benchmarks/20261125-mimalloc-v3.7.1.md), the [v3.7.0 measurements](benchmarks/20261121-mimalloc-v3.7.0.md), and the earlier measurements below.
 
 **Targets:** all, through the `mi_*_aligned` functions of mimalloc before v3.6.0. `MiMalloc::alloc`, `alloc_zeroed` and `realloc` used them for every alignment before this crate added its `mi_malloc` path, and still use them with the `debug` feature.
 
