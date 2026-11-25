@@ -11,7 +11,7 @@ The vendored mimalloc version and how the build relates to upstream are document
 
 ```toml
 [dependencies]
-mimalloc-rust = { git = "https://github.com/sunlei/mimalloc-rust", tag = "v0.3.0" }
+mimalloc-rust = { git = "https://github.com/sunlei/mimalloc-rust", tag = "v0.4.0" }
 ```
 
 ```rust
@@ -22,6 +22,8 @@ static GLOBAL: MiMalloc = MiMalloc;
 ```
 
 Cargo fetches the mimalloc submodule together with the git dependency.
+
+When upgrading from `v0.3.0`, direct FFI callers should use the `mi_u*` size outputs as usable byte counts. For internal block accounting, call `mi_allocated_size` while the allocation is live.
 
 mimalloc is compiled with the optimization level of the Cargo profile. To keep allocation fast in dev builds, add this to the application's `Cargo.toml`:
 
