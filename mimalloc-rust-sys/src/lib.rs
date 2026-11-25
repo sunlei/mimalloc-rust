@@ -19,6 +19,10 @@
 //! - Release blocks from `mi_*` functions with `mi_free` or another `mi_*` function, not
 //!   with the C library's `free`, unless the `override` feature has replaced `free`.
 //! - `mi_free_small` and `mi_free_small_nonnull` only accept blocks from `mi_*alloc_small`.
+//! - The size outputs of `mi_u*` are usable byte counts, including those of `mi_urealloc`,
+//!   `mi_urealloc_aligned`, and `mi_ufree`. For internal block accounting, use
+//!   `mi_allocated_size` while the allocation is live. Padding, alignment and guarded
+//!   sampling can make the two sizes differ.
 //! - A `mi_heap_t` can be used and its blocks freed from any thread. `mi_heap_delete`
 //!   leaves live blocks available to free. Other threads must stop using the heap before
 //!   deletion, or call `mi_thread_heap_release` if they still need to free blocks concurrently.
@@ -45,7 +49,8 @@
 //! - Option setters synchronize with concurrent readers. Options consumed at process or
 //!   heap initialization must be set before that initialization to affect it. Set
 //!   `MIMALLOC_*` variables before process start. Secure builds only accept `show_stats`,
-//!   `verbose` and `allow_thp` from the environment.
+//!   `verbose`, `show_errors` and `allow_thp` from the environment. Elevated processes
+//!   ignore all `MIMALLOC_*` options.
 //! - The `*_stats_get` functions return `false` unless the `size` and `version` fields of the
 //!   destination already match, which the unbound `mi_stats_init` would arrange: zero a
 //!   `mi_stats_t`, then set `size` to its size and `version` to [`MI_STAT_VERSION`].
@@ -73,7 +78,7 @@ pub const MI_GUARDED: bool = cfg!(mi_guarded);
 
 /// The alignment `mi_malloc` gives every block of at least this many bytes.
 ///
-/// This is the default `MI_MAX_ALIGN_SIZE` from `types.h` (16), or a conservative bound
+/// This is the default `MI_MAX_ALIGN_SIZE` from `config.h` (16), or a conservative bound
 /// of 1 with [`MI_GUARDED`]. Since v3.7.0, guarded sampling rounds up object sizes by
 /// default. Precise placement requires the C build macro `MI_UNSAFE_GUARDED_PRECISE`,
 /// which this crate does not enable.

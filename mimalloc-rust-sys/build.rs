@@ -37,9 +37,9 @@ fn main() {
     let mut defines: Vec<(&str, &str)> = Vec::new();
 
     // Without explicit values `MI_DEBUG` defaults to 2 whenever `NDEBUG` is undefined
-    // (types.h), and cc never defines `NDEBUG`.
+    // (decl.h), and cc never defines `NDEBUG`.
     // With `debug`, `MI_GUARDED=2` (fine-grained sampling) is what upstream's CMake sets for
-    // its debug builds; `types.h` alone would pick 1. Setting it here also keeps the C library
+    // its debug builds; `config.h` alone would pick 1. Setting it here also keeps the C library
     // and `cfg(mi_guarded)` (the sys crate's `MI_GUARDED`) on one decision.
     // `cfg(mi_debug)` (the sys crate's `MI_DEBUG`) reports `MI_DEBUG` the same way.
     println!("cargo::rustc-check-cfg=cfg(mi_debug, mi_guarded)");
